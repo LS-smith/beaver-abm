@@ -1,55 +1,41 @@
-from mesa.experimental.devs import ABMSimulator
-from mesa.visualization import CanvasGrid
-from mesa.visualization.ModularVisualization import ModularServer
+
 from model import BeaverModel  # your adapted model
-from agent import Beaver  # your Beaver agent class
+from agent import Beaver, Kit, Juvenile, Adult   # your Beaver agent class
 import numpy as np
 from rasterio import open as rio_open
 import matplotlib.pyplot as plt
 
 with rio_open("Users/r34093ls/Documents/test_flood/clipped_dtm.tif") as dem:  # 50m resolution
-    dem = dem.read(1)
+            dem = dem.read(1)
 
-plt.imsave("dem_grid.png", dem, cmap = "greys")
+def beaver_plot (dem, agents, step=None, save_path=None):
 
-def beaver_portrayal(agent):
-    if not getattr(agent, "cell", None):
-        return None  # skip agents with no cell
+    plt.figure(figsize = (10, 8))
+    plt.imsave(dem, cmap = 'greys', origin = 'upper')
 
-    portrayal = { "Shape": "circle",
-                  "Color": "grey",
-                  "Filled": "true",
-                  "Layer": 2, #hmmmm
-                  "r": 0.5 }
-    
-    if isinstance(agent, Kit):
-        portrayal["color"] = "green"
-        portrayal["Layer"] = 2
-    elif isinstance(agent, Juvenile):
-        portrayal["color"] = "orange"
-        portrayal["Layer"] = 2
-    elif isinstance(agent, Adult):
-        portrayal["color"] = "brown"
-        portrayal["Layer"] = 2
+    for agent in agents:
+        y, x = agent.cell.location
+        if isinstance(agent, Kit):
+            color = "green"
+        elif isinstance(agent, Juvenile):
+            color = "orange"
+        elif isinstance(agent, Adult):
+            color = "brown"
+        else:
+            color = "gray"
+        plt.scatter(x, y, c= color,s=20,edgecolors='black', alpha=0.7 ) 
+
+    plt.title(f"Beaver abm{'- step' + str(step) if step is not None else ''}")
+    plt.axis('off')
+    if save_path:
+        plt.savefig(save_path,bbox_inches= 'tight', dpi=150)
+        plt.close()
     else:
-        portrayal["color"] = "gray"
-        portrayal["Layer"] = 2
+        plt.show()
 
-    return portrayal
+model = BeaverModel(initial_beavers=50, seed=42)
 
+for i in range(120):
+    model.step()
 
-grid = CanvasGrid(agent_portrayal,
-                  dem.shape[1],
-                  dem.shape[0],
-                  500,
-                  500,
-                  background="dem_grid")
-
-
-
-server = ModularServer(BeaverModel,
-                        [grid],
-                       "beaver abm",
-                       {"seed": 42, "initial_beavers": 50}
-                    )
-server.launch()
+beaver_plot(model.dem, model.type[Beaver], step=12 )
