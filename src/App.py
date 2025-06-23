@@ -28,7 +28,7 @@ def beaver_plot (dem, agents, step=None, save_path=None):
     plt.title(f"Beaver abm{'- step' + str(step) if step is not None else ''}")
     plt.axis('off')
     if save_path:
-        plt.savefig(save_path,bbox_inches= 'tight', dpi=150)
+        plt.savefig('./out/gif.png',bbox_inches= 'tight', dpi=150)
         plt.close()
     else:
         plt.show()
