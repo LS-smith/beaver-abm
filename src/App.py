@@ -1,11 +1,11 @@
 
-from model import BeaverModel  # your adapted model
-from agent import Beaver, Kit, Juvenile, Adult   # your Beaver agent class
+from Model import BeaverModel  # your adapted model
+from Agent import Beaver, Kit, Juvenile, Adult   # your Beaver agent class
 import numpy as np
 from rasterio import open as rio_open
 import matplotlib.pyplot as plt
 
-with rio_open("Users/r34093ls/Documents/test_flood/clipped_dtm.tif") as dem:  # 50m resolution
+with rio_open("./data/Clipped_dtm.tif") as dem:  # 5m resolution
             dem = dem.read(1)
 
 def beaver_plot (dem, agents, step=None, save_path=None):
@@ -28,7 +28,7 @@ def beaver_plot (dem, agents, step=None, save_path=None):
     plt.title(f"Beaver abm{'- step' + str(step) if step is not None else ''}")
     plt.axis('off')
     if save_path:
-        plt.savefig('./out/gif.png',bbox_inches= 'tight', dpi=150)
+        plt.savefig("./out/gif.png",bbox_inches= 'tight', dpi=150)
         plt.close()
     else:
         plt.show()

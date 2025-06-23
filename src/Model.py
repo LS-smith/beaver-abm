@@ -11,7 +11,7 @@ class BeaverModel(Model):
     def __init__(self, width=20, height=20, initial_beavers=50, seed=None, simulator=None): # initialise
         super().__init__(seed=seed)
 
-        with rio_open("Users/r34093ls/Documents/test_flood/clipped_dtm.tif") as dem:  # 50m resolution
+        with rio_open("./data/Clipped_dtm.tif") as dem:  # 5m resolution
             self.dem = dem.read(1) # read the data out of band 1 in the datase
 
         self.width, self.height = self.dem.shape
