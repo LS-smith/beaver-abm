@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 import skimage.transform as skt #pip install scikit-image
 
-def downsample (dem, max_size=500):
+def downsample (dem, max_size=1000):
      factor = max (dem.shape) / max_size
      if factor > 1:
           new_shape = (int(dem.shape[0] / factor), int(dem.shape[1] / factor))
@@ -25,13 +25,16 @@ def agent_coord(grid, agent):
 def beaver_plot (dem, agents, grid, step=None, save_path=None):
 
     plt.figure(figsize = (10, 8))
-    plt.imshow(dem, cmap = 'Grays', origin = 'upper')
+    plt.imshow(dem, cmap = 'Grays', origin = 'upper', zorder = 1)
 
+    count = 0
     for agent in agents:
         coords = agent_coord(grid, agent)
         if coords is None:
              continue
         y, x = coords
+        print(f"agent at: ({y}, {x})")
+        count +=1
 
         if isinstance(agent, Kit):
             color = "green"
@@ -41,7 +44,7 @@ def beaver_plot (dem, agents, grid, step=None, save_path=None):
             color = "brown"
         else:
             color = "gray"
-        plt.scatter(x, y, c= color,s=20,edgecolors='black', alpha=0.7 ) 
+        plt.scatter(x, y, c= 'r',s=50,edgecolors='black', alpha=0.7,zorder = 10 ) 
 
     plt.title(f"Beaver abm{'- step' + str(step) if step is not None else ''}")
     plt.axis('off')
@@ -50,6 +53,8 @@ def beaver_plot (dem, agents, grid, step=None, save_path=None):
         plt.close()
     else:
         plt.show()
+
+    print(f"step {step}: plotted {count} agents")
 
 with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/Clipped_dtm.tif') as dem:  # 50m resolution
             dem = dem.read(1)

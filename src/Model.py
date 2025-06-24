@@ -33,6 +33,10 @@ class BeaverModel(Model):
             cell.agents.append(beaver)
             self.type[Beaver].append(beaver)
 
+        print("aftermodel creation:")
+        print("beavers in model.type[Beaver]:", len(self.type[Beaver]))
+        print("total number of agents in the grid:", sum(len(cell.agents) for cell in self.grid.all_cells.cells))
+
 
         self.datacollector = DataCollector({
             "Beavers": lambda m: len(m.type[Beaver]),
@@ -49,8 +53,7 @@ class BeaverModel(Model):
 
         if simulator is not None:
             self.simulator = simulator
-            self.simulator.setup(self)
-            
+            self.simulator.setup(self)   
         self.running = True
 
     def step(self):
