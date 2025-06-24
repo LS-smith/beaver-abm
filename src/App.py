@@ -20,7 +20,7 @@ def agent_coord(grid, agent):
      for cell in grid.all_cells.cells:
           if agent in cell.agents:
                return cell.location
-          return None
+     return None
 
 def beaver_plot (dem, agents, grid, step=None, save_path=None):
 

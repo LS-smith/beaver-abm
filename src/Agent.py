@@ -1,6 +1,6 @@
-from mesa.experimental.cell_space import CellAgent
+from mesa import Agent
 
-class Beaver(CellAgent):
+class Beaver(Agent):
     """Base Beaver Class"""
 
     def __init__(self, model, sex=None, cell=None, age=0):

@@ -1,6 +1,6 @@
 from mesa import Model
 from mesa.datacollection import DataCollector
-from mesa.discrete_space import OrthogonalVonNeumannGrid
+from mesa.space import MultiGrid
 from mesa.experimental.devs import ABMSimulator
 import numpy as np
 from rasterio import open as rio_open
@@ -16,7 +16,7 @@ class BeaverModel(Model):
         self.height, self.width = self.dem.shape
 
         # properly initialise the grid
-        self.grid = OrthogonalVonNeumannGrid(
+        self.grid = MultiGrid(
             [self.height, self.width],
             torus=True,
             capacity=float("inf"),
