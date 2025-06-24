@@ -13,14 +13,12 @@ class BeaverModel(Model):
 
         
         self.dem = dem
-        self.height, self.width = self.dem.shape
+        self.width, self.height = self.dem.shape
 
         # properly initialise the grid
         self.grid = MultiGrid(
-            [self.height, self.width],
+            self.width, self.height,
             torus=True,
-            capacity=float("inf"),
-            random=self.random,
         )
 
         # initialise type as a set NOT list
@@ -28,14 +26,14 @@ class BeaverModel(Model):
 
         # create initial beavers and add them to the grid
         for _ in range(initial_beavers):
-            cell = self.random.choice(self.grid.all_cells.cells)
+            cell = self.random.choice(self.grid.coord_iter())
             beaver = Adult(model=self, cell=cell) # add only adult beavers 
             cell.agents.append(beaver)
             self.type[Beaver].append(beaver)
 
         print("aftermodel creation:")
         print("beavers in model.type[Beaver]:", len(self.type[Beaver]))
-        print("total number of agents in the grid:", sum(len(cell.agents) for cell in self.grid.all_cells.cells))
+        print("total number of agents in the grid:", sum(len(cell.agents) for cell in self.grid.coord_iter()))
 
 
         self.datacollector = DataCollector({

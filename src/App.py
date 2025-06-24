@@ -17,7 +17,7 @@ def downsample (dem, max_size=1000):
      
 
 def agent_coord(grid, agent):
-     for cell in grid.all_cells.cells:
+     for cell in grid.coord_iter():
           if agent in cell.agents:
                return cell.location
      return None
