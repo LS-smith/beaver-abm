@@ -2,7 +2,9 @@
 
 
 #abm
-mesa
+mesa [rec]
+rasterio
+scikit-image #for downsampling of dem
 
 
 #visualisation
