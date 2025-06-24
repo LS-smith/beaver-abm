@@ -16,13 +16,23 @@ def downsample (dem, max_size=500):
      return dem
      
 
-def beaver_plot (dem, agents, step=None, save_path=None):
+def agent_coord(grid, agent):
+     for cell in grid.all_cells.cells:
+          if agent in cell.agents:
+               return cell.location
+          return None
+
+def beaver_plot (dem, agents, grid, step=None, save_path=None):
 
     plt.figure(figsize = (10, 8))
-    plt.imshow(dem, cmap = 'greys', origin = 'upper')
+    plt.imshow(dem, cmap = 'Grays', origin = 'upper')
 
     for agent in agents:
-        y, x = agent.cell.location
+        coords = agent_coord(grid, agent)
+        if coords is None:
+             continue
+        y, x = coords
+
         if isinstance(agent, Kit):
             color = "green"
         elif isinstance(agent, Juvenile):
@@ -46,10 +56,10 @@ with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/Clipped_dtm.tif'
 
 dem_dwn = downsample(dem)
 
-model = BeaverModel(initial_beavers=50, seed=42)
+model = BeaverModel(dem=dem_dwn, initial_beavers=50, seed=42)
 
 for i in range(120):
     model.step()
     if i % 12 == 0:
         save_path = f'/Users/r34093ls/Documents/GitHub/beaver-abm/out/gif_step_{i:03d}.png'
-        beaver_plot(dem_dwn, model.type[Beaver], step=i, save_path=save_path)
+        beaver_plot(dem_dwn, model.type[Beaver], model.grid, step=i, save_path=save_path)

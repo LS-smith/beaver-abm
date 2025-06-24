@@ -1,4 +1,4 @@
-from mesa.discrete_space import CellAgent
+from mesa.experimental.cell_space import CellAgent
 
 class Beaver(CellAgent):
     """Base Beaver Class"""

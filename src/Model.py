@@ -8,12 +8,12 @@ from rasterio import open as rio_open
 from Agent import Beaver, Kit, Juvenile, Adult # if this is seperate files
 
 class BeaverModel(Model):
-    def __init__(self, width=20, height=20, initial_beavers=50, seed=None, simulator=None): # initialise
+    def __init__(self, dem, initial_beavers=50, seed=None, simulator=None): # initialise
         super().__init__(seed=seed)
 
-        with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/Clipped_dtm.tif') as dem:  # 50m resolution
-            self.dem = dem.read(1)
-            self.height, self.width = self.dem.shape
+        
+        self.dem = dem
+        self.height, self.width = self.dem.shape
 
         # properly initialise the grid
         self.grid = OrthogonalVonNeumannGrid(
