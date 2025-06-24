@@ -5,7 +5,7 @@ import numpy as np
 from rasterio import open as rio_open
 import matplotlib.pyplot as plt
 
-import skimage.transform as skt #pip install scikit-image
+import skimage.transform as skt 
 
 def downsample (dem, max_size=1000):
      factor = max (dem.shape) / max_size
@@ -14,25 +14,15 @@ def downsample (dem, max_size=1000):
           dem_dwn = skt.resize(dem, new_shape, anti_aliasing=True, preserve_range=True)
           return dem_dwn
      return dem
-     
 
-def agent_coord(grid, agent):
-     for cell in grid.coord_iter():
-          if agent in cell.agents:
-               return cell.location
-     return None
-
-def beaver_plot (dem, agents, grid, step=None, save_path=None):
+def beaver_plot (dem, agents, step=None, save_path=None):
 
     plt.figure(figsize = (10, 8))
     plt.imshow(dem, cmap = 'Grays', origin = 'upper', zorder = 1)
 
     count = 0
     for agent in agents:
-        coords = agent_coord(grid, agent)
-        if coords is None:
-             continue
-        y, x = coords
+        y, x = agent.pos
         print(f"agent at: ({y}, {x})")
         count +=1
 
@@ -67,4 +57,4 @@ for i in range(120):
     model.step()
     if i % 12 == 0:
         save_path = f'/Users/r34093ls/Documents/GitHub/beaver-abm/out/gif_step_{i:03d}.png'
-        beaver_plot(dem_dwn, model.type[Beaver], model.grid, step=i, save_path=save_path)
+        beaver_plot(dem_dwn, model.type[Beaver], step=i, save_path=save_path)

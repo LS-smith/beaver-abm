@@ -9,13 +9,13 @@ class Beaver(Agent):
 		"""
         super().__init__(model) 
         self.sex = sex if sex else model.random.choice(['M', 'F'])
-        self.cell = cell
         self.partner = None
         self.age = age
         self.reproduction_timer = 0
         self.remove = False # mark for removal
 
     def step(self):
+        neighbours = self.model.grid.get_cell_list_contents([self.pos])
         if ( self.partner is None
             or getattr(self.partner, "remove", False)  # check if partner is not marked for removal
             or self.partner.partner != self
@@ -23,7 +23,7 @@ class Beaver(Agent):
             # if no partner, or partner is marked for removal, or partner is not paired with self
             self.partner = None # clear partner
             potential_mates = [
-                a for a in self.cell.agents
+                a for a in neighbours
                 if ( isinstance(a, Beaver) 
                     and a.sex != self.sex and (a.partner is None or getattr(a.partner, "remove", False) 
                     or a.partner.partner !=a))]
@@ -41,18 +41,20 @@ class Beaver(Agent):
             self.move(together=False)
 
     def move(self, together=False):
-        new_cell = self.cell.neighborhood.select_random_cell()
-        self.move_to(new_cell)
-        if together and self.partner:
-            if not getattr(self.partner, "remove", False):  # check if partner is not marked for removal
-                self.partner.move_to(new_cell)
+        possible_move = self.model.grid.get_neighborhood(self.pos, moore=False, include_center=False)
+        if possible_move:
+            new_area = self.random.choice(possible_move)
+            self.model.grid.move_agent(self, new_area)
+            if together and self.partner:
+                if not getattr(self.partner, "remove", False):  # check if partner is not marked for removal
+                    self.model.grid.move_agent(self.partner, new_area)
        
 
     def reproduce(self):
         if self.partner and self.cell is not None:
             for _ in range(self.random.randint(1, 3)): # random number of kits between 1-3
-                kit = Kit(self.model, cell=self.cell)
-                self.cell.agents.append(kit)
+                kit = Kit(self.model, sex=self.sex)
+                self.model.grid.place_agent(kit, self.pos)
                 self.model.type[Beaver].append(kit)
 
     def age_up(self):
@@ -68,10 +70,11 @@ class Beaver(Agent):
 class Kit(Beaver):
     # kits move with group, can't pair or reproduce, age up
 
-    def move(self, together=False): # move with colony
-        adults = [a for a in self.cell.agents if isinstance(a, Adult)] #find adulgt in same cell
+    def move(self, together=False):
+        neighbours = self.model.grid.get_cell_list_contents([self.pos]) # move with colony
+        adults = [a for a in neighbours if isinstance(a, Adult)] #find adulgt in same cell
         if adults:
-            self.move_to(adults[0].cell) # move to lead adults new cell - if no adult dont move!
+            self.model.grid.move_agent # move to lead adults new cell - if no adult dont move!
         
          #TODO: finish later, should only move with parents or die - think this will mess up when parent dead so add in that 
 
@@ -83,7 +86,7 @@ class Kit(Beaver):
         new_self = self.age_up() # age up if applicable
         if new_self is not self:
             self.remove = True
-            self.cell.agents.append(new_self)
+            self.model.grid.place_agent(new_self, self.pos)
             self.model.type[Beaver].append(new_self)
             # return new_self.step()
             return
@@ -107,7 +110,7 @@ class Juvenile(Beaver):
         new_self = self.age_up() # age up if applicable
         if new_self is not self:
             self.remove = True
-            self.cell.agents.append(new_self)
+            self.model.grid.place_agent(new_self, self.pos)
             self.model.type[Beaver].append(new_self)
             # return new_self.step() - no need to call step again, mutating the agent list by iterating
             return

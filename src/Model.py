@@ -26,14 +26,15 @@ class BeaverModel(Model):
 
         # create initial beavers and add them to the grid
         for _ in range(initial_beavers):
-            cell = self.random.choice(self.grid.coord_iter())
-            beaver = Adult(model=self, cell=cell) # add only adult beavers 
-            cell.agents.append(beaver)
+            x = self.random.randrange(self.width)
+            y = self.random.randrange(self.height)
+            beaver = Adult(self) # add only adult beavers 
+            self.grid.place_agent(beaver, (x,y))
             self.type[Beaver].append(beaver)
 
         print("aftermodel creation:")
         print("beavers in model.type[Beaver]:", len(self.type[Beaver]))
-        print("total number of agents in the grid:", sum(len(cell.agents) for cell in self.grid.coord_iter()))
+        print("total number of agents in the grid:", sum(len(cell_contents) for cell_contents, x, y in self.grid.coord_iter()))
 
 
         self.datacollector = DataCollector({
@@ -61,8 +62,6 @@ class BeaverModel(Model):
 
         for agent in list(self.type[Beaver]):
             if getattr(agent, "remove", False):
-                if agent in agent.cell.agents:
-                    agent.cell.agents.remove(agent)
                 if agent in self.type[Beaver]:
                     self.type[Beaver].remove(agent)
         
