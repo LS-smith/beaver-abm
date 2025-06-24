@@ -22,6 +22,8 @@ def beaver_plot (dem, agents, step=None, save_path=None):
 
     count = 0
     for agent in agents:
+        if getattr(agent, "remove", False):
+            continue
         y, x = agent.pos
         print(f"agent at: ({y}, {x})")
         count +=1
@@ -34,7 +36,7 @@ def beaver_plot (dem, agents, step=None, save_path=None):
             color = "brown"
         else:
             color = "gray"
-        plt.scatter(x, y, c= 'r',s=50,edgecolors='black', alpha=0.7,zorder = 10 ) 
+        plt.scatter(x, y, c=color, s=50,edgecolors='black', alpha=0.7,zorder = 10 ) 
 
     plt.title(f"Beaver abm{'- step' + str(step) if step is not None else ''}")
     plt.axis('off')

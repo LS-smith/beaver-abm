@@ -28,7 +28,7 @@ class BeaverModel(Model):
         for _ in range(initial_beavers):
             x = self.random.randrange(self.width)
             y = self.random.randrange(self.height)
-            beaver = Adult(self) # add only adult beavers 
+            beaver = Adult(self.next_id, self) # add only adult beavers (may be self.unique_id)
             self.grid.place_agent(beaver, (x,y))
             self.type[Beaver].append(beaver)
 
@@ -62,8 +62,8 @@ class BeaverModel(Model):
 
         for agent in list(self.type[Beaver]):
             if getattr(agent, "remove", False):
-                if agent in self.type[Beaver]:
-                    self.type[Beaver].remove(agent)
+                self.grid.remove_agent(agent)
+                self.type[Beaver].remove(agent)
         
         self.datacollector.collect(self) # collect data on each step
 

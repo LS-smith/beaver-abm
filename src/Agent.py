@@ -3,11 +3,11 @@ from mesa import Agent
 class Beaver(Agent):
     """Base Beaver Class"""
 
-    def __init__(self, model, sex=None, cell=None, age=0):
+    def __init__(self, unique_id, model, sex=None, cell=None, age=0):
         """
 		* Initialise and populate the model
 		"""
-        super().__init__(model) 
+        super().__init__(unique_id, model) 
         self.sex = sex if sex else model.random.choice(['M', 'F'])
         self.partner = None
         self.age = age
@@ -51,7 +51,7 @@ class Beaver(Agent):
        
 
     def reproduce(self):
-        if self.partner and self.cell is not None:
+        if self.partner is not None:
             for _ in range(self.random.randint(1, 3)): # random number of kits between 1-3
                 kit = Kit(self.model, sex=self.sex)
                 self.model.grid.place_agent(kit, self.pos)
@@ -74,7 +74,7 @@ class Kit(Beaver):
         neighbours = self.model.grid.get_cell_list_contents([self.pos]) # move with colony
         adults = [a for a in neighbours if isinstance(a, Adult)] #find adulgt in same cell
         if adults:
-            self.model.grid.move_agent # move to lead adults new cell - if no adult dont move!
+            self.model.grid.move_agent(self, adults[0].pos) # move to lead adults new cell - if no adult dont move!
         
          #TODO: finish later, should only move with parents or die - think this will mess up when parent dead so add in that 
 
