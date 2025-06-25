@@ -28,13 +28,13 @@ class BeaverModel(Model):
         for _ in range(initial_beavers):
             x = self.random.randrange(self.width)
             y = self.random.randrange(self.height)
-            beaver = Adult(self.next_id, self) # add only adult beavers (may be self.unique_id)
+            beaver = Adult(self) # add only adult beavers (may be self.unique_id)
             self.grid.place_agent(beaver, (x,y))
             self.type[Beaver].append(beaver)
 
         print("aftermodel creation:")
         print("beavers in model.type[Beaver]:", len(self.type[Beaver]))
-        print("total number of agents in the grid:", sum(len(cell_contents) for cell_contents, x, y in self.grid.coord_iter()))
+        print("total number of agents in the grid:", sum(len(cell_contents) for cell_contents, pos in self.grid.coord_iter()))
 
 
         self.datacollector = DataCollector({

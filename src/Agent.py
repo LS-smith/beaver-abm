@@ -3,11 +3,11 @@ from mesa import Agent
 class Beaver(Agent):
     """Base Beaver Class"""
 
-    def __init__(self, unique_id, model, sex=None, cell=None, age=0):
+    def __init__(self, model, sex=None, cell=None, age=0):
         """
 		* Initialise and populate the model
 		"""
-        super().__init__(unique_id, model) 
+        super().__init__(model) 
         self.sex = sex if sex else model.random.choice(['M', 'F'])
         self.partner = None
         self.age = age
