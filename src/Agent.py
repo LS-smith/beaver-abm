@@ -74,7 +74,8 @@ class Kit(Beaver):
         neighbours = self.model.grid.get_cell_list_contents([self.pos]) # move with colony
         adults = [a for a in neighbours if isinstance(a, Adult)] #find adulgt in same cell
         if adults:
-            self.model.grid.move_agent(self, adults[0].pos) # move to lead adults new cell - if no adult dont move!
+            self.model.grid.move_agent(self, adults[0].pos) 
+            # move to lead adults new cell - if no adult dont move!
         
          #TODO: finish later, should only move with parents or die - think this will mess up when parent dead so add in that 
 
