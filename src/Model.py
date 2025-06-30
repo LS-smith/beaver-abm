@@ -13,7 +13,7 @@ class BeaverModel(Model):
 
         
         self.dem = dem
-        self.width, self.height = self.dem.shape
+        self.height, self.width = self.dem.shape
 
         # properly initialise the grid
         self.grid = MultiGrid(self.width, self.height, torus=True)
@@ -22,8 +22,8 @@ class BeaverModel(Model):
         self.type = {Beaver: []}
 
         valid_area =[(x,y)
-                    for y in range(self.dem.shape[0])
-                    for x in range(self.dem.shape[1])
+                    for y in range(self.height)
+                    for x in range(self.width)
                     if self.dem[y,x] != -100]
 
         # create initial beavers and add them to the grid
