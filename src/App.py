@@ -25,8 +25,11 @@ def beaver_plot (dem, agents, step=None, save_path=None):
         if getattr(agent, "remove", False):
             continue
         y, x = agent.pos
-        print(f"agent at: ({y}, {x})")
-        count +=1
+        if( 0<= x < dem.shape[1] and
+            0<= y < dem.shape[0] and
+            dem[y,x] != -100):
+                print(f"agent at: ({y}, {x})")
+                count +=1
 
         if isinstance(agent, Kit):
             color = "green"
@@ -61,9 +64,10 @@ for i in range(120):
         save_path = f'/Users/r34093ls/Documents/GitHub/beaver-abm/out/gif_step_{i:03d}.png'
         beaver_plot(dem_dwn, model.type[Beaver], step=i, save_path=save_path)
 
-#File "/Users/r34093ls/Documents/GitHub/beaver-abm/src/App.py", line 56, in <module>
+error:Traceback (most recent call last):
+  File "/Users/r34093ls/Documents/GitHub/beaver-abm/src/App.py", line 59, in <module>
     model = BeaverModel(dem=dem_dwn, initial_beavers=50, seed=42)
-  File "/Users/r34093ls/Documents/GitHub/beaver-abm/src/Model.py", line 38, in __init__
+  File "/Users/r34093ls/Documents/GitHub/beaver-abm/src/Model.py", line 35, in __init__
     self.grid.place_agent(beaver, (x,y))
     ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
   File "/opt/miniconda3/envs/abm/lib/python3.13/site-packages/mesa/space.py", line 95, in wrapper

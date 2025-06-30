@@ -50,8 +50,7 @@ class Beaver(Agent):
             x, y = pos
             if( 0<= x < self.model.dem.shape[1] and
                 0<= y < self.model.dem.shape[0] and
-                not np.isnan(self.model.dem[y,x])
-            ):
+                self.model.dem[y,x] != -100):
                 valid_move.append(pos)
         if possible_move:
             new_area = self.random.choice(possible_move)
