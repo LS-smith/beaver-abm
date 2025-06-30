@@ -24,10 +24,16 @@ class BeaverModel(Model):
         # initialise type as a set NOT list
         self.type = {Beaver: []}
 
+        valid_area =[(x,y)
+                    for y in range(self.dem.shape[0])
+                    for x in range(self.dem.shape[1])
+                    if not np.isnan(self.dem[y,x])]
+
         # create initial beavers and add them to the grid
         for _ in range(initial_beavers):
-            x = self.random.randrange(self.width)
-            y = self.random.randrange(self.height)
+            x, y =self.random.choice(valid_area)
+            #x = self.random.randrange(self.width)
+            #y = self.random.randrange(self.height)
             beaver = Adult(self) # add only adult beavers (may be self.unique_id)
             self.grid.place_agent(beaver, (x,y))
             self.type[Beaver].append(beaver)

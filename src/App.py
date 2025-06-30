@@ -60,3 +60,16 @@ for i in range(120):
     if i % 12 == 0:
         save_path = f'/Users/r34093ls/Documents/GitHub/beaver-abm/out/gif_step_{i:03d}.png'
         beaver_plot(dem_dwn, model.type[Beaver], step=i, save_path=save_path)
+
+#File "/Users/r34093ls/Documents/GitHub/beaver-abm/src/App.py", line 56, in <module>
+    model = BeaverModel(dem=dem_dwn, initial_beavers=50, seed=42)
+  File "/Users/r34093ls/Documents/GitHub/beaver-abm/src/Model.py", line 38, in __init__
+    self.grid.place_agent(beaver, (x,y))
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/abm/lib/python3.13/site-packages/mesa/space.py", line 95, in wrapper
+    placement_func(self, agent, *args, **kwargs)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/abm/lib/python3.13/site-packages/mesa/space.py", line 1037, in place_agent
+    self._grid[x][y].append(agent)
+    ~~~~~~~~~~^^^
+IndexError: list index out of range

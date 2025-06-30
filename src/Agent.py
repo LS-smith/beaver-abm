@@ -1,4 +1,5 @@
 from mesa import Agent
+import numpy as np
 
 class Beaver(Agent):
     """Base Beaver Class"""
@@ -42,6 +43,16 @@ class Beaver(Agent):
 
     def move(self, together=False):
         possible_move = self.model.grid.get_neighborhood(self.pos, moore=False, include_center=False)
+        #TODO: add restricting movement to valid areas of the dem
+
+        valid_move = []
+        for pos in possible_move:
+            x, y = pos
+            if( 0<= x < self.model.dem.shape[1] and
+                0<= y < self.model.dem.shape[0] and
+                not np.isnan(self.model.dem[y,x])
+            ):
+                valid_move.append(pos)
         if possible_move:
             new_area = self.random.choice(possible_move)
             self.model.grid.move_agent(self, new_area)
