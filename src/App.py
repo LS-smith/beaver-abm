@@ -24,7 +24,7 @@ def beaver_plot (dem, agents, step=None, save_path=None):
     for agent in agents:
         if getattr(agent, "remove", False):
             continue
-        y, x = agent.pos
+        x, y = agent.pos
         if( 0<= x < dem.shape[1] and
             0<= y < dem.shape[0] and
             dem[y,x] != -100):
