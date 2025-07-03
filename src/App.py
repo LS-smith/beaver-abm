@@ -18,6 +18,9 @@ def downsample (dem, max_size=1000):
 def beaver_plot (dem, agents, step=None, save_path=None):
     # TODO: downsample the agents positions to match the output plot - doesnt really matter right now
 
+    x_scale = dem.shape[1] / agents[0].model.dem.shape[1]
+    y_scale = dem.shape[0] / agents[0].model.dem.shape[0]
+
     plt.figure(figsize = (10, 8))
     plt.imshow(dem, cmap = 'Grays', origin = 'upper', zorder = 1)
 
@@ -26,9 +29,11 @@ def beaver_plot (dem, agents, step=None, save_path=None):
         if getattr(agent, "remove", False):
             continue
         x, y = agent.pos
-        if( 0<= x < dem.shape[1] and
-            0<= y < dem.shape[0] and
-            dem[y,x] != -100):
+        x_down = x * x_scale
+        y_down = y * y_scale
+        if( 0<= x_down < dem.shape[1] and
+            0<= y_down < dem.shape[0] and
+            dem[int (y_down), int (x_down)] != -100):
                 print(f"agent at: ({y}, {x})")
                 count +=1
 
@@ -40,7 +45,7 @@ def beaver_plot (dem, agents, step=None, save_path=None):
             color = "brown"
         else:
             color = "gray"
-        plt.scatter(x, y, c=color, s=50,edgecolors='black', alpha=0.7,zorder = 10 ) 
+        plt.scatter(x_down, y_down, c=color, s=50,edgecolors='black', alpha=0.7,zorder = 10 ) 
 
     plt.title(f"Beaver abm{'- step' + str(step) if step is not None else ''}")
     plt.axis('off')
