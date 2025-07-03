@@ -1,5 +1,6 @@
 from mesa import Agent
 import numpy as np
+import random
 
 class Beaver(Agent):
     """Base Beaver Class"""
@@ -14,8 +15,16 @@ class Beaver(Agent):
         self.age = age
         self.reproduction_timer = 0
         self.remove = False # mark for removal
+        self.territory = set() # territory coords
+        self.territory_abandonment_timer = None 
 
     def step(self):
+        #check territory timer
+        if self.territory and self.territory_abandonment_timer is not None:
+            self.territory_abandonment_timer -= 1
+            if self.territory_abandonment_timer <= 0:
+                self.abandon_territory()
+
         neighbours = self.model.grid.get_cell_list_contents([self.pos])
         if ( self.partner is None
             or getattr(self.partner, "remove", False)  # check if partner is not marked for removal
@@ -33,18 +42,16 @@ class Beaver(Agent):
                 self.partner = mate
                 mate.partner = self
 
-
-        # move together if paired, else move alone
-        if self.partner and self.partner.partner == self:
-            if self.unique_id < self.partner.unique_id:  # only one of the pair moves both
-                self.move(together=True)
-        else:
-            self.move(together=False)
+        #only move if doesnt have a territory - move together if paired else move alone.
+        if not self.territory:
+            if self.partner and self.partner.partner == self:
+                if self.unique_id < self.partner.unique_id:  # only one of the pair moves both
+                    self.colony()
+            else:
+                self.move()
 
     def move(self, together=False):
         possible_move = self.model.grid.get_neighborhood(self.pos, moore=False, include_center=False)
-        #TODO: add restricting movement to valid areas of the dem
-
         valid_move = []
         for pos in possible_move:
             x, y = pos
@@ -52,13 +59,72 @@ class Beaver(Agent):
                 0<= y < self.model.dem.shape[0] and
                 self.model.dem[y,x] != -100):
                 valid_move.append(pos)
-        if possible_move:
+        if valid_move:
             new_area = self.random.choice(possible_move)
             self.model.grid.move_agent(self, new_area)
-            if together and self.partner:
-                if not getattr(self.partner, "remove", False):  # check if partner is not marked for removal
-                    self.model.grid.move_agent(self.partner, new_area)
-       
+    
+    def colony(self): #moving partner and kits together as a unit
+        possible_move = self.model.grid.get_neighborhood(self.pos, moore=False, include_center=False)
+        valid_move = []
+        for pos in possible_move:
+            x, y = pos
+            if( 0<= x < self.model.dem.shape[1] and
+                0<= y < self.model.dem.shape[0] and
+                self.model.dem[y,x] != -100):
+                valid_move.append(pos)
+        if valid_move:
+            new_area = self.random.choice(possible_move)
+            self.model.grid.move_agent(self, new_area)
+            # move partner
+            if self.partner and not getattr(self.partner, "remove", False):
+                self.model.grid.move_agent(self.partner, new_area)
+            # move kit
+            for agent in self.model.grid.get_cell_list_contents([self.pos]):
+                if isinstance(agent, Kit) and not getattr(agent, "remove", False): # check if partner is not marked for removal
+                    self.model.grid.move_agent(agent, new_area)
+
+    def form_territory(self):
+        defend = set()
+        for agent in self.model.type[Beaver]:
+            if agent is not self and agent.territory:
+                defend.update(agent.territory)
+        # get 28 unoccupied cells around bevaer location
+        x0, y0 =self.pos
+        territory = set()
+        for r in range(1, 10):
+            for dx in range(-r, r+1):
+                for dy in range(-r, r+1):
+                    x, y =x0 +dx, y0+dy
+                    if (
+                        0 <= x < self.model.dem.shape[1]
+                        and 0 <= y < self.model.dem.shape[0]
+                        and self.model.dem[y, x] != -100
+                        and (x, y) not in defend ):
+                        territory.add((x,y))
+                    if len(territory) >= 28:
+                        break
+                if len(territory) >= 28:
+                    break
+            if len(territory) >= 28:
+                break
+            self.territory = territory
+            self.territory_abandonment_timer = int(np.random.exponential(48))
+            print(f"Beaver {getattr(self, 'unique_id', id(self))} formed territory at {self.pos} with {len(self.territory)} cells.")
+
+    def abandon_territory(self):
+        print(f"Beaver {getattr(self, 'unique_id', id(self))} abandoned territory at {self.pos} ")
+        self.territory = set()
+        self.territory_abandonment_timer = None
+        # move partner and kits with agent
+        if self.partner:
+            self.partner.territory = set()
+            self.partner.territory_abandonment_timer = None
+            self.model.grid.move_agent(self.partner, self.pos)
+        for agent in self.model.grid.get_cell_list_contents([self.pos]):
+            if isinstance(agent, Kit):
+                agent.territory = set()
+                agent.territory_abandonment_timer = None
+                self.model.grid.move_agent(agent, self.pos)
 
     def reproduce(self):
         if self.partner is not None:
@@ -79,20 +145,16 @@ class Beaver(Agent):
 
 class Kit(Beaver):
     # kits move with group, can't pair or reproduce, age up
-
-    def move(self, together=False):
-        neighbours = self.model.grid.get_cell_list_contents([self.pos]) # move with colony
-        adults = [a for a in neighbours if isinstance(a, Adult)] #find adulgt in same cell
-        if adults:
-            self.model.grid.move_agent(self, adults[0].pos) 
-            # move to lead adults new cell - if no adult dont move!
-        
          #TODO: finish later, should only move with parents or die - think this will mess up when parent dead so add in that 
 
-
-    def step(self): 
-        self.move() # specific movement logic - move with colony
+    def step(self):
         self.age += 1  
+
+        neighbours = self.model.grid.get_cell_list_contents([self.pos]) # move with colony
+        adults = [a for a in neighbours if isinstance(a, Adult)] #find adulgt in same cell
+        if not adults:
+            self.remove = True
+            return
 
         new_self = self.age_up() # age up if applicable
         if new_self is not self:
@@ -106,8 +168,12 @@ class Kit(Beaver):
 class Juvenile(Beaver):
     # juveniles disperse away from group, pair and reproduce, !build dams!, age up
     def step(self):
-        self.move()
         self.age += 1  
+
+        #assign territory
+        if not self.territory:
+            self.form_territory()
+            print(f"Beaver {getattr(self, 'unique_id', id(self))} formed territory at {self.pos} with {len(self.territory)} cells.")
 
         # reproduction logic 
         if self.partner and self.partner.partner == self and self.unique_id < self.partner.unique_id:
@@ -125,8 +191,6 @@ class Juvenile(Beaver):
             self.model.type[Beaver].append(new_self)
             # return new_self.step() - no need to call step again, mutating the agent list by iterating
             return
-
-
 
 class Adult(Beaver):
     # adults have full range of beaver behaviour (pairing, moving, reproducing, !building dams!, they dont age up-they die)

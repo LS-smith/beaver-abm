@@ -16,6 +16,7 @@ def downsample (dem, max_size=1000):
      return dem
 
 def beaver_plot (dem, agents, step=None, save_path=None):
+    # TODO: downsample the agents positions to match the output plot - doesnt really matter right now
 
     plt.figure(figsize = (10, 8))
     plt.imshow(dem, cmap = 'Grays', origin = 'upper', zorder = 1)
@@ -56,7 +57,7 @@ with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/Clipped_dtm.tif'
 
 dem_dwn = downsample(dem)
 
-model = BeaverModel(dem=dem_dwn, initial_beavers=50, seed=42)
+model = BeaverModel(dem=dem, initial_beavers=50, seed=42)
 
 for i in range(120):
     model.step()
