@@ -24,7 +24,7 @@ class BeaverModel(Model):
         valid_area =[(x,y)
                     for y in range(self.height)
                     for x in range(self.width)
-                    if self.dem[y,x] != -100]
+                    if self.dem[y,x] != 0]
 
         # create initial beavers and add them to the grid
         for _ in range(initial_beavers):

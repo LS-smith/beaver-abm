@@ -31,11 +31,13 @@ def beaver_plot (dem, agents, step=None, save_path=None):
         x, y = agent.pos
         x_down = x * x_scale
         y_down = y * y_scale
-        if( 0<= x_down < dem.shape[1] and
-            0<= y_down < dem.shape[0] and
-            dem[int (y_down), int (x_down)] != -100):
-                print(f"agent at: ({y}, {x})")
-                count +=1
+        
+        if hasattr(agent,"territory"):
+            territory_colour = "lightgreen"
+            for tx, ty in agent.territory:
+                tx_down = tx * x_scale
+                ty_down = ty * y_scale
+                plt.scatter(tx_down, ty_down, c=territory_colour, s=10, alpha=0.15,zorder = 2, marker = 's')
 
         if isinstance(agent, Kit):
             color = "green"
@@ -46,6 +48,12 @@ def beaver_plot (dem, agents, step=None, save_path=None):
         else:
             color = "gray"
         plt.scatter(x_down, y_down, c=color, s=50,edgecolors='black', alpha=0.7,zorder = 10 ) 
+
+        if( 0<= x_down < dem.shape[1] and
+            0<= y_down < dem.shape[0] and
+            dem[int (y_down), int (x_down)] != 0):
+                print(f"agent at: ({y}, {x})")
+                count +=1
 
     plt.title(f"Beaver abm{'- step' + str(step) if step is not None else ''}")
     plt.axis('off')
