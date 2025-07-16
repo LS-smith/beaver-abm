@@ -53,7 +53,7 @@ def beaver_plot (dem, agents, step=None, save_path=None):
 
         if( 0<= x_down < dem.shape[1] and
             0<= y_down < dem.shape[0] and
-            dem[int (y_down), int (x_down)] != 0):
+            dem[int (y_down), int (x_down)] != -100):
                 print(f"agent at: ({y}, {x})")
                 count +=1
 
@@ -67,7 +67,7 @@ def beaver_plot (dem, agents, step=None, save_path=None):
 
     print(f"step {step}: plotted {count} agents")
 
-with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/Clipped_dtm.tif') as dem:  # 5m resolution
+with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/DTM.tif') as dem:  # 5m resolution
             dem = dem.read(1)
 
 dem_dwn = downsample(dem)
