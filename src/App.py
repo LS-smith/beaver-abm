@@ -16,7 +16,9 @@ def downsample (dem, max_size=1000):
      return dem
 
 def beaver_plot (dem, agents, step=None, save_path=None):
-    # TODO: downsample the agents positions to match the output plot - doesnt really matter right now
+    if not agents:
+         print(f"step {step}: no agents to plot")
+         return
 
     x_scale = dem.shape[1] / agents[0].model.dem.shape[1]
     y_scale = dem.shape[0] / agents[0].model.dem.shape[0]
@@ -65,7 +67,7 @@ def beaver_plot (dem, agents, step=None, save_path=None):
 
     print(f"step {step}: plotted {count} agents")
 
-with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/Clipped_dtm.tif') as dem:  # 50m resolution
+with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/Clipped_dtm.tif') as dem:  # 5m resolution
             dem = dem.read(1)
 
 dem_dwn = downsample(dem)
