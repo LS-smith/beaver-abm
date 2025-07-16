@@ -107,7 +107,7 @@ class Beaver(Agent):
             x, y = pos
             if( 0<= x < self.model.dem.shape[1] and
                 0<= y < self.model.dem.shape[0] and
-                self.model.dem[y,x] != -100 ):
+                self.model.dem[y,x] != 0 ):
                 valid_move.append(pos)
         if valid_move:
             new_area = self.random.choice(possible_move)
@@ -120,7 +120,7 @@ class Beaver(Agent):
             x, y = pos
             if( 0<= x < self.model.dem.shape[1] and
                 0<= y < self.model.dem.shape[0] and
-                self.model.dem[y,x] != -100):
+                self.model.dem[y,x] != 0):
                 valid_move.append(pos)
         if valid_move:
             new_area = self.random.choice(possible_move)
@@ -148,7 +148,7 @@ class Beaver(Agent):
                     if (
                         0 <= x < self.model.dem.shape[1]
                         and 0 <= y < self.model.dem.shape[0]
-                        and self.model.dem[y, x] != -100
+                        and self.model.dem[y, x] != 0
                         and (x, y) not in defend ):
                         territory.add((x,y))
                     if len(territory) >= 28:

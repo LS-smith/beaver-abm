@@ -53,7 +53,7 @@ def beaver_plot (dem, agents, step=None, save_path=None):
 
         if( 0<= x_down < dem.shape[1] and
             0<= y_down < dem.shape[0] and
-            dem[int (y_down), int (x_down)] != -100):
+            dem[int (y_down), int (x_down)] != 0):
                 print(f"agent at: ({y}, {x})")
                 count +=1
 
