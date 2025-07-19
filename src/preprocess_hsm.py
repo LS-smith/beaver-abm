@@ -12,8 +12,46 @@ with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/landcover.tif') 
 
     landcover_5m = landcover.read(
         1,
-        5m_shape = (new_height. new_width),
-        upsample = resampling.nearest
-    ) 
+        out_shape = (new_height, new_width),
+        resampling = Resampling.nearest)
+    
+    new_grid = landcover.transform * landcover.transform.scale (
+        (landcover.width/new_width),
+        (landcover.height/new_height)
+    )
 
-    new_grid = landcover.transform * landcover.transform.scale ()
+    unsuitable_lc = [12,13,14,15,16,17,18,19,20]
+    moderate_lc = [4,5,6,7,8,9,10,11,21]
+    suitable_lc = [2,3]
+    preferred_lc = [1]
+
+    def classify(habitat):
+        if habitat in preferred_lc:
+            return 4
+        elif habitat in suitable_lc:
+            return 3
+        elif habitat in moderate_lc:
+            return 2
+        elif habitat in unsuitable_lc:
+            return 1
+        elif habitat == 0:
+            return 0
+        else:
+            return 1
+        
+    vectorised_hsm = np.vectorize(classify)
+    hsm_5m = vectorised_hsm(landcover_5m)
+
+    profile.update(
+        dtype=np.uint8,
+        height=new_height,
+        width=new_width,
+        transform=new_grid,
+        count=1,
+        nodata=0,
+    )
+
+    with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/hsm_5m.tif', 'w', **profile) as dst:
+        dst.write(hsm_5m.astype(np.uint8), 1)
+
+    print("Upsampling and habitat suitibility classification complete. output saved as 'hsm_5m'")
