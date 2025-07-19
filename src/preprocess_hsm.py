@@ -30,7 +30,7 @@ with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/landcover.tif') 
             return 4
         elif habitat in suitable_lc:
             return 3
-        elif habitat in moderate_lc:
+        elif habitat in moderate_lc:                                                     
             return 2
         elif habitat in unsuitable_lc:
             return 1
