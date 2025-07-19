@@ -34,7 +34,7 @@ with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/landcover.tif') 
             return 2
         elif habitat in unsuitable_lc:
             return 1
-        elif habitat == 0:
+        elif habitat == 0: #no data (outside study area)
             return 0
         else:
             return 1
