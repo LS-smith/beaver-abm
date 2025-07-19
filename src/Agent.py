@@ -5,7 +5,7 @@ import random
 class Beaver(Agent):
     """Base Beaver Class"""
 
-    def __init__(self, model, sex=None, cell=None, age=0):
+    def __init__(self, model, sex=None, age=0):
         """
 		* Initialise and populate the model
 		"""
@@ -186,9 +186,9 @@ class Beaver(Agent):
     def age_up(self):
         # kit -> juvenile at age 2 (24 steps), juvenile -> adult at age 3 (36 steps)
         if isinstance(self, Kit) and self.age >= 24: 
-            return Juvenile(self.model, sex=self.sex, cell=self.cell, age=self.age)
+            return Juvenile(self.model, sex=self.sex, age=self.age)
         elif isinstance(self, Juvenile) and self.age >= 36:
-            return Adult(self.model, sex=self.sex, cell=self.cell, age=self.age)
+            return Adult(self.model, sex=self.sex, age=self.age)
         else:
             return self
 
@@ -223,6 +223,9 @@ class Juvenile(Beaver):
 
         #assign territory
         if not self.territory:
+            self.disperse()
+            if self.remove:
+                return
             self.form_territory()
             print(f"Beaver {getattr(self, 'unique_id', id(self))} formed territory at {self.pos} with {len(self.territory)} cells.")
 

@@ -31,7 +31,7 @@ class BeaverModel(Model):
             x, y =self.random.choice(valid_area)
             #x = self.random.randrange(self.width)
             #y = self.random.randrange(self.height)
-            beaver = Adult(self) # add only adult beavers (may be self.unique_id)
+            beaver = Juvenile(self) # add only adult beavers (may be self.unique_id)
             self.grid.place_agent(beaver, (x,y))
             self.type[Beaver].append(beaver)
 
