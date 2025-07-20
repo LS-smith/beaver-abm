@@ -5,6 +5,7 @@
 mesa [rec]
 rasterio
 scikit-image #for downsampling of dem
+geopandas
 
 
 #visualisation
