@@ -15,6 +15,7 @@ def buffer_width(row):
     
 waterways['buffer_geom'] = waterways.apply(lambda row: row.geometry.buffer(buffer_width(row)), axis=1)
 buff_water = waterways.set_geometry('buffer_geom')
+buff_water = buff_water.drop(columns=['geometry'])
 
 buff_water.to_file('/Users/r34093ls/Documents/GitHub/beaver-abm/data/buff_water.shp')
 
@@ -32,3 +33,12 @@ for row in range(rows):
         min_distance = buff_water.distance(cell_point).min()
         distance_to_water[row,col] = min_distance
 
+(abm) (base) r34093ls@E-OSXV42GV beaver-abm % /opt/miniconda3/envs/abm/bin/python /Users/r34093ls/Documents/GitHub/beaver-abm/src/distance_to_water.py
+/opt/miniconda3/envs/abm/lib/python3.13/site-packages/pyogrio/raw.py:198: UserWarning: Measured (M) geometry types are not supported. Original type 'Measured 3D LineString' is converted to 'LineString Z'
+  return ogr_read(
+/opt/miniconda3/envs/abm/lib/python3.13/site-packages/shapely/constructive.py:180: RuntimeWarning: invalid value encountered in buffer
+  return lib.buffer(
+/Users/r34093ls/Documents/GitHub/beaver-abm/src/distance_to_water.py:20: UserWarning: Column names longer than 10 characters will be truncated when saved to ESRI Shapefile.
+  buff_water.to_file('/Users/r34093ls/Documents/GitHub/beaver-abm/data/buff_water.shp')
+/opt/miniconda3/envs/abm/lib/python3.13/site-packages/pyogrio/geopandas.py:662: UserWarning: 'crs' was not provided.  The output dataset will not have projection information defined and may not be usable in other systems.
+  write(
