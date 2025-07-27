@@ -1,34 +1,45 @@
 import geopandas as gdp
 import rasterio
-from shapely.geometry import Point
+from rasterio import rasterize 
+from shapely.geometry import Point, CAP_STYLE, JOIN_STYLE
 import numpy as np
+from scipy.ndimage import distance_transform_edt
 
 waterways = gdp.read_file('/Users/r34093ls/Documents/GitHub/beaver-abm/data/water_network.shp')
 
-default_width = 1
+waterways = waterways[~waterways['width'].isna()].copy()
 
 def buffer_width(row):
-    if 'width' in row and not np.isnan(row['width']):
-        return row['width'] / 2
-    else:
-        return default_width / 2
+    return row.geometry.buffer(
+        row['width'] / 2,
+        cap_style = CAP_STYLE.round,
+        join_style = JOIN_STYLE.round
+    )
     
-waterways['buffer_geom'] = waterways.apply(lambda row: row.geometry.buffer(buffer_width(row)), axis=1)
+waterways['buffer_geom'] = waterways.apply(buffer_width, axis=1)
 buff_water = waterways.set_geometry('buffer_geom')
-buff_water = buff_water.drop(columns=['geometry'])
 
-buff_water.to_file('/Users/r34093ls/Documents/GitHub/beaver-abm/data/buff_water.shp')
+buff_water.to_file('/Users/r34093ls/Documents/GitHub/beaver-abm/data/buffered_waterways.shp')
 
 with rasterio.open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/hsm_5m.tif') as hsm_5m:
     hsm = hsm_5m.read(1)
     transform = hsm_5m.transform
+    shape = hsm.shape
+    pixel_size = hsm_5m.res[0]
+    profile = hsm_5m.profile.copy()
 
-rows, cols = hsm.shape
-distance_to_water = np.zeros_like(hsm, dtype=np.float32)
+water_mask = rasterize(
+    [(geom,1) for geom in buff_water.geometry],
+    out_shape = shape,
+    transform = transform,
+    fill = 0,
+    dtype = np.uint8,
+)
 
-for row in range(rows):
-    for col in range(cols):
-        x,y = rasterio.transform.xy(transform, row, col)
-        cell_point = Point(x,y)
-        min_distance = buff_water.distance(cell_point).min()
-        distance_to_water[row,col] = min_distance
+distance_pixels = distance_transform_edt(water_mask == 0)
+distance_m = distance_pixels * pixel_size
+
+profile.update(dtype=np.float32, count=1, nodata=None)
+with rasterio.open ('/Users/r34093ls/Documents/GitHub/beaver-abm/data/distance_to_water_5m.tif', 'w', **profile) as dtw:
+                   dtw.write(distance_m.astype(np.float32), 1)
+

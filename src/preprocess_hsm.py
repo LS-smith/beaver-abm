@@ -20,12 +20,15 @@ with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/landcover.tif') 
         (landcover.height/new_height)
     )
 
-    unsuitable_lc = [12,13,14,15,16,17,18,19,20]
+    unsuitable_lc = [12,13,15,16,17,18,19,20]
     moderate_lc = [4,5,6,7,8,9,10,11,21]
     suitable_lc = [2,3]
     preferred_lc = [1]
+    water_lc = [14]
 
     def classify(habitat):
+        if habitat in water_lc:
+            return 5
         if habitat in preferred_lc:
             return 4
         elif habitat in suitable_lc:
