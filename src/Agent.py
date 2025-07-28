@@ -1,6 +1,7 @@
 from mesa import Agent
 import numpy as np
 import random
+from scipy.ndimage import label
 
 class Beaver(Agent):
     """Base Beaver Class"""
@@ -134,32 +135,61 @@ class Beaver(Agent):
                     self.model.grid.move_agent(agent, new_area)
 
     def form_territory(self):
-        defend = set()
+        
+        mean = np.log(3000) #mean bankful length of terriroty is ~3km CHECK!!!
+        sigma = 1.0
+        bank_length = np.random.lognormal(mean=mean, sigma=sigma)
+        bank_length = np.clip(bank_length, 500, 30000) #spread is 0.5 - 3km CHECK!!!!
+
+        cell_length = getattr(self.model.grid, "cell_width", 5)
+        territory_cells = int(bank_length / cell_length)
+        territory_cells = max(territory_cells, 1)
+
+        occupied = set()
         for agent in self.model.type[Beaver]:
             if agent is not self and agent.territory:
-                defend.update(agent.territory)
-        # get 28 unoccupied cells around bevaer location
-        x0, y0 =self.pos
-        territory = set()
-        for r in range(1, 10):
-            for dx in range(-r, r+1):
-                for dy in range(-r, r+1):
-                    x, y =x0 +dx, y0+dy
-                    if (
-                        0 <= x < self.model.dem.shape[1]
-                        and 0 <= y < self.model.dem.shape[0]
-                        and self.model.dem[y, x] != 0
-                        and (x, y) not in defend ):
-                        territory.add((x,y))
-                    if len(territory) >= 28:
-                        break
-                if len(territory) >= 28:
-                    break
-            if len(territory) >= 28:
-                break
-            self.territory = territory
+                occupied.update(agent.territory)
+
+        hsm = self.model.hsm
+        distance_to_water = self.model.distance_to_water
+        water_mask = (hsm == 5)
+
+        max_bank_dist = 20 #100m - check!!!!
+        habitat_mask = (hsm >= 2) & (hsm < 5)
+        bankful_mask = habitat_mask & (distance_to_water <= max_bank_dist)
+
+        for x, y in occupied:
+            if 0 <= x < bankful_mask.shape[1] and 0 <= y < bankful_mask.shape[0]:
+                bankful_mask[y, x] = False
+
+        structure = np.array([[0,1,0],[1,1,1],[0,1,0]]) # rooks move connectivity - patches together are connected
+        labelled, patch_count = label(bankful_mask, structure = structure)
+
+        best_patch = None
+        best_score = -np.inf
+        for patch_id in range(1, patch_count+1):
+            patch_cells = np.argwhere(labelled == patch_id)
+            patch_size = patch_cells.shape[0]
+            if patch_size < territory_cells // 20: # skips patches that are very small 1/20th of bankful length, ask Jonny! may need to tweak more to allow for increased fragmentation nin high competition areas.
+                continue
+
+            score = -abs(patch_size - territory_cells)
+            if any((self.pos[1], self.pos[0]) == tuple(cell) for cell in patch_cells):
+                score += 1000 # make likely to choose patch in current position
+            if score > best_score:
+                best_score = score
+                best_patch = patch_cells
+
+        if best_patch is not None:
+            if best_patch.shape[0] > territory_cells:
+                chosen_territory = np.random.choice(best_patch.shape[0], territory_cells, replace=False)
+                best_patch = best_patch[chosen_territory]
+            self.territory = set((int(cell[1]), int(cell[0])) for cell in best_patch)
             self.territory_abandonment_timer = int(np.random.exponential(48))
-            print(f"Beaver {getattr(self, 'unique_id', id(self))} formed territory at {self.pos} with {len(self.territory)} cells.")
+            print(f"Beaver {getattr(self, 'unique_id', id(self))} formed territory at {self.pos} with {len(self.territory)} cells (length: {bank_length:0f}m).")
+        else:
+            self.territory = set()
+            print(f"Beaver {getattr(self, 'unique_id', id(self))} could not find territory. Poor beaver.")
 
     def abandon_territory(self):
         print(f"Beaver {getattr(self, 'unique_id', id(self))} abandoned territory at {self.pos} ")

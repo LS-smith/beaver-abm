@@ -28,7 +28,7 @@ with rasterio.open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/hsm_5m.tif'
     pixel_size = hsm_5m.res[0]
     profile = hsm_5m.profile.copy()
 
-water_mask = rasterize(
+channel_mask = rasterize(
     [(geom,1) for geom in buff_water.geometry],
     out_shape = shape,
     transform = transform,
@@ -36,7 +36,7 @@ water_mask = rasterize(
     dtype = np.uint8,
 )
 
-distance_pixels = distance_transform_edt(water_mask == 0)
+distance_pixels = distance_transform_edt(channel_mask == 0)
 distance_m = distance_pixels * pixel_size
 
 profile.update(dtype=np.float32, count=1, nodata=None)

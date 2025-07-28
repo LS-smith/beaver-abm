@@ -11,6 +11,12 @@ class BeaverModel(Model):
     def __init__(self, dem, initial_beavers=50, seed=None, simulator=None): # initialise
         super().__init__(seed=seed)
 
+        with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/hsm_5m.tif') as hsm:
+            self.hsm = hsm.read(1)
+
+        with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/distance_to_water_5m.tif') as dtw:
+            self.distance_to_water = dtw.read(1)
+
         
         self.dem = dem
         self.height, self.width = self.dem.shape
