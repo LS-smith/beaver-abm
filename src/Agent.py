@@ -172,8 +172,15 @@ class Beaver(Agent):
             patch_size = patch_cells.shape[0]
             if patch_size < territory_cells // 20: # skips patches that are very small 1/20th of bankful length, ask Jonny! may need to tweak more to allow for increased fragmentation nin high competition areas.
                 continue
+            
+            patch_hsms = hsm[tuple(patch_cells.T)]
+            mean_hsm = np.mean(patch_hsms[patch_hsms < 5])
 
-            score = -abs(patch_size - territory_cells)
+            scale = np.interp(mean_hsm, [2,4], [0.5, 2.0])
+            territory_cells_scaled = int(territory_cells * scale)
+            territory_cells_scaled = max(territory_cells_scaled, 1)
+
+            score = -abs(patch_size - territory_cells_scaled)
             if any((self.pos[1], self.pos[0]) == tuple(cell) for cell in patch_cells):
                 score += 1000 # make likely to choose patch in current position
             if score > best_score:
@@ -181,8 +188,8 @@ class Beaver(Agent):
                 best_patch = patch_cells
 
         if best_patch is not None:
-            if best_patch.shape[0] > territory_cells:
-                chosen_territory = np.random.choice(best_patch.shape[0], territory_cells, replace=False)
+            if best_patch.shape[0] > territory_cells_scaled:
+                chosen_territory = np.random.choice(best_patch.shape[0], territory_cells_scaled, replace=False)
                 best_patch = best_patch[chosen_territory]
             self.territory = set((int(cell[1]), int(cell[0])) for cell in best_patch)
             self.territory_abandonment_timer = int(np.random.exponential(48))
@@ -225,11 +232,12 @@ class Beaver(Agent):
 
 class Kit(Beaver):
     # kits move with group, can't pair or reproduce, age up
-         #TODO: finish later, should only move with parents or die - think this will mess up when parent dead so add in that 
+    def __init__(self, model, sex=None, age=0):
+        super().__init__(model, sex=sex, age=age)
 
     def step(self):
         self.age += 1  
-
+        
         neighbours = self.model.grid.get_cell_list_contents([self.pos]) # move with colony
         adults = [a for a in neighbours if isinstance(a, Adult)] #find adulgt in same cell
         if not adults:
@@ -241,15 +249,17 @@ class Kit(Beaver):
             self.remove = True
             self.model.grid.place_agent(new_self, self.pos)
             self.model.type[Beaver].append(new_self)
-            # return new_self.step()
             return
 
 
 class Juvenile(Beaver):
     # juveniles disperse away from group, pair and reproduce, !build dams!, age up
+    def __init__(self, model, sex=None, age=0):
+        super().__init__(model, sex=sex, age=age)
 
     def step(self):
         self.age += 1  
+        super().step()
 
         #assign territory
         if not self.territory:
@@ -278,6 +288,9 @@ class Juvenile(Beaver):
 
 class Adult(Beaver):
     # adults have full range of beaver behaviour (pairing, moving, reproducing, !building dams!, they dont age up-they die)
+    def __init__(self, model, sex=None, age=0):
+        super().__init__(model, sex=sex, age=age)
+    
     def step(self):
         self.age += 1
         super().step()  # call base beaver logic (pairing, movement)
