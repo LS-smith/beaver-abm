@@ -20,6 +20,8 @@ class Beaver(Agent):
         self.territory_abandonment_timer = None 
         self.dispersal_attempts = 0
 
+
+
     def step(self):
         #check territory timer
         if self.territory and self.territory_abandonment_timer is not None:
@@ -58,6 +60,8 @@ class Beaver(Agent):
             else:
                 self.move()
 
+
+
     def mate(self, x=None, y=None, max_dist=None):
         mates=[]
         for a in self.model.type[Beaver]:
@@ -74,6 +78,8 @@ class Beaver(Agent):
                         continue
                 mates.append(a)
             return mates
+
+
 
     def disperse(self):
         mean_dispersal_distance = 1000 # 5km / 5m grid
@@ -101,6 +107,8 @@ class Beaver(Agent):
             self.remove = True
             return
 
+
+
     def move(self):
         possible_move = self.model.grid.get_neighborhood(self.pos, moore=False, include_center=False)
         valid_move = []
@@ -114,6 +122,8 @@ class Beaver(Agent):
             new_area = self.random.choice(possible_move)
             self.model.grid.move_agent(self, new_area)
     
+
+
     def colony(self): #moving partner and kits together as a unit
         possible_move = self.model.grid.get_neighborhood(self.pos, moore=False, include_center=False)
         valid_move = []
@@ -133,6 +143,8 @@ class Beaver(Agent):
             for agent in self.model.grid.get_cell_list_contents([self.pos]):
                 if isinstance(agent, Kit) and not getattr(agent, "remove", False): # check if partner is not marked for removal
                     self.model.grid.move_agent(agent, new_area)
+
+
 
     def form_territory(self):
         
@@ -155,15 +167,16 @@ class Beaver(Agent):
         water_mask = (hsm == 5)
 
         max_bank_dist = 20 #100m - check!!!!
+        fuzzy_water_dist = np.exp(-distance_to_water / max_bank_dist)
         habitat_mask = (hsm >= 2) & (hsm < 5)
-        bankful_mask = habitat_mask & (distance_to_water <= max_bank_dist)
+        fuzzy_mask = habitat_mask * fuzzy_water_dist
 
         for x, y in occupied:
-            if 0 <= x < bankful_mask.shape[1] and 0 <= y < bankful_mask.shape[0]:
-                bankful_mask[y, x] = False
+            if 0 <= x < fuzzy_mask.shape[1] and 0 <= y < fuzzy_mask.shape[0]:
+                fuzzy_mask[y, x] = 0
 
         structure = np.array([[0,1,0],[1,1,1],[0,1,0]]) # rooks move connectivity - patches together are connected
-        labelled, patch_count = label(bankful_mask, structure = structure)
+        labelled, patch_count = label(fuzzy_mask, structure = structure)
 
         best_patch = None
         best_score = -np.inf
@@ -174,13 +187,16 @@ class Beaver(Agent):
                 continue
             
             patch_hsms = hsm[tuple(patch_cells.T)]
+            patch_fuzzy = fuzzy_mask[tuple(patch_cells.T)]
             mean_hsm = np.mean(patch_hsms[patch_hsms < 5])
+            mean_fuzzy = np.mean(patch_fuzzy)
 
             scale = np.interp(mean_hsm, [2,4], [0.5, 2.0])
             territory_cells_scaled = int(territory_cells * scale)
             territory_cells_scaled = max(territory_cells_scaled, 1)
 
-            score = -abs(patch_size - territory_cells_scaled)
+
+            score = mean_hsm * 100 + mean_fuzzy * 100 -abs(patch_size - territory_cells_scaled)
             if any((self.pos[1], self.pos[0]) == tuple(cell) for cell in patch_cells):
                 score += 1000 # make likely to choose patch in current position
             if score > best_score:
@@ -198,6 +214,8 @@ class Beaver(Agent):
             self.territory = set()
             print(f"Beaver {getattr(self, 'unique_id', id(self))} could not find territory. Poor beaver.")
 
+
+
     def abandon_territory(self):
         print(f"Beaver {getattr(self, 'unique_id', id(self))} abandoned territory at {self.pos} ")
         self.territory = set()
@@ -212,6 +230,8 @@ class Beaver(Agent):
                 agent.territory = set()
                 agent.territory_abandonment_timer = None
                 self.model.grid.move_agent(agent, self.pos)
+
+
 
     def reproduce(self):
         if self.partner is not None:
@@ -228,6 +248,7 @@ class Beaver(Agent):
             return Adult(self.model, sex=self.sex, age=self.age)
         else:
             return self
+
 
 
 class Kit(Beaver):
@@ -250,6 +271,7 @@ class Kit(Beaver):
             self.model.grid.place_agent(new_self, self.pos)
             self.model.type[Beaver].append(new_self)
             return
+
 
 
 class Juvenile(Beaver):
@@ -285,6 +307,8 @@ class Juvenile(Beaver):
             self.model.type[Beaver].append(new_self)
             # return new_self.step() - no need to call step again, mutating the agent list by iterating
             return
+
+
 
 class Adult(Beaver):
     # adults have full range of beaver behaviour (pairing, moving, reproducing, !building dams!, they dont age up-they die)
