@@ -2,6 +2,7 @@ from mesa import Agent
 import numpy as np
 import random
 from scipy.ndimage import label
+from numpy import zeros
 
 class Beaver(Agent):
     """Base Beaver Class"""
@@ -240,6 +241,7 @@ class Beaver(Agent):
                 self.model.grid.place_agent(kit, self.pos)
                 self.model.type[Beaver].append(kit)
 
+
     def age_up(self):
         # kit -> juvenile at age 2 (24 steps), juvenile -> adult at age 3 (36 steps)
         if isinstance(self, Kit) and self.age >= 24: 
@@ -250,6 +252,38 @@ class Beaver(Agent):
             return self
 
 
+
+    def build_dam(self):
+        if not self.territory: #if not in territory
+            return
+
+        territory_shape = self.model.grid.cells_to_geometry(self.territory) #get territory shape
+
+        water_in_territory = self.model.waterways[self.model.waterways.intersects(territory_shape)] #find all waterways intersecting territory
+        if water_in_territory.empty:
+            return
+
+        for idx, segment in water_in_territory.iterrows(): 
+            if segment["gradient"] > 30: #only build dam if gradient lower than 3%
+                continue
+
+            channel = segment.geometry #all points along the channel
+            num_points = int(channel.length //5) #every 5m can build
+            for fraction in np.linspace(0,1, num_points):
+                point = channel.interpolate(fraction * channel.length)
+                x,y = int(point.x), int(point.y)
+                if (x,y) not in self.territory:
+                    continue
+            
+            temp_dam = Dam(self.model, (x, y), depth=depth)
+            flood_layer = temp_dam.flood_fill()
+            if temp_dam.floods_non_water():
+                self.model.grid.place_agent(temp_dam, (x, y))
+                self.dam = temp_dam
+                print(f"Beaver {getattr(self, 'unique_id', id(self))} built dam at {(x, y)}")
+                return
+        
+        print ("Dam not built: too much water man!")
 
 class Kit(Beaver):
     # kits move with group, can't pair or reproduce, age up
@@ -336,3 +370,43 @@ class Adult(Beaver):
             self.partner = None # clear self.partner
             self.remove = True
             return
+
+class Dam(Agent):
+    def __init__(self, model, pos, depth):
+        super().__init__(model)
+        self.pos = pos
+        self.depth = depth
+        self.flooded_area = None
+
+        #depth = varied
+
+        def flood_fill(self):
+            x0, y0 = self.pos
+            dem = self.model.dem
+            flood_layer = zeros(dem.shape)
+            r0, c0 = self.model.grid.cells_to_index(x0, y0)
+            assessed = set()
+            to_assess = set()
+            to_assess.add((r0, c0))
+            flood_extent = dem[r0, c0] + self.depth
+
+            while to_assess:
+                r, c = to_assess.pop()
+                assessed.add((r, c))
+                if dem[r, c] <= flood_extent:
+                    flood_layer[r, c] = 1
+                    for r_adj, c_adj in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]:
+                        neighbour = (r + r_adj, c + c_adj)
+                        if 0 <= neighbour[0] < dem.shape[0] and 0 <= neighbour[1] < dem.shape[1] and neighbour not in assessed:
+                            to_assess.add(neighbour)
+            self.flooded_area = flood_layer
+            return flood_layer
+
+        def flood_land(self):
+            hsm = self.model.hsm
+            flooded_indices = np.argwhere(self.flooded_area == 1)
+            for r, c in flooded_indices:
+                if hsm[r, c] != 6:
+                    return True
+            return False
+    
