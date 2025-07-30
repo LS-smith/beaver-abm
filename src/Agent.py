@@ -264,6 +264,10 @@ class Beaver(Agent):
             return
 
         for idx, segment in water_in_territory.iterrows(): 
+            gradient = segment["gradient"]
+            if gradient == 'NULL' or (isinstance(gradient, float) and np.isnan(gradient)):
+                gradient = 0
+                
             if segment["gradient"] > 30: #only build dam if gradient lower than 3%
                 continue
 
