@@ -4,7 +4,8 @@ from Agent import Beaver, Kit, Juvenile, Adult   # your Beaver agent class
 import numpy as np
 from rasterio import open as rio_open
 import matplotlib.pyplot as plt
-
+import pandas as pd
+import os
 import skimage.transform as skt 
 
 def downsample (dem, max_size=1000):

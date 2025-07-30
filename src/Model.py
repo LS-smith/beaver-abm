@@ -5,9 +5,9 @@ from mesa.experimental.devs import ABMSimulator
 import numpy as np
 from rasterio import open as rio_open
 
-from Agent import Beaver, Kit, Juvenile, Adult # if this is seperate files
+from Agent import Beaver, Kit, Juvenile, Adult, Dam # if this is seperate files
 
-class BeaverModel(Model):
+class Flood_Model(Model):
     def __init__(self, dem, initial_beavers=50, seed=None, simulator=None): # initialise
         super().__init__(seed=seed)
 
@@ -25,7 +25,7 @@ class BeaverModel(Model):
         self.grid = MultiGrid(self.width, self.height, torus=True)
 
         # initialise type as a set NOT list
-        self.type = {Beaver: []}
+        self.type = {Beaver: [], Dam: []}
 
         valid_area =[(x,y)
                     for y in range(self.height)
@@ -47,17 +47,27 @@ class BeaverModel(Model):
 
 
         self.datacollector = DataCollector({
-            "Beavers": lambda m: len(m.type[Beaver]),
-            "Paired Beavers": lambda m: len(
-                [a for a in m.type[Beaver] if a.partner and a.unique_id < a.partner.unique_id]
-            ),
+            "Beaver_Count": lambda m: len(m.type[Beaver]),
+            "Paired Beavers": lambda m: len([a for a in m.type[Beaver] if a.partner and a.unique_id < a.partner.unique_id]),
             "Males": lambda m: len([a for a in m.type[Beaver] if a.sex == "M"]),
             "Females": lambda m: len([a for a in m.type[Beaver] if a.sex == "F"]),
             "Kits": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Kit)]),
             "Juveniles": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Juvenile)]),
             "Adults": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Adult)]),
+            "Dams": lambda m: len(m.type[Dam])
         })
         self.datacollector.collect(self)
+
+def stats (model, step):
+     agents = model.type[Beaver]
+     dams = model.type[Dam]
+     pop_size = len(agents)
+     num_kits= sum(isinstance(a, Kit) for a in agents)
+     num_juveniles = sum(isinstance(a, Juvenile) for a in agents)
+     num_adults = sum(isinstance(a, Adult) for a in agents)
+     num_dam = len(dams)
+     flooded_cells = sum(np.sum(dam.flooded_area) for dam in dams if dam.flooded_area is not None)
+
 
         if simulator is not None:
             self.simulator = simulator

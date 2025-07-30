@@ -267,7 +267,7 @@ class Beaver(Agent):
             gradient = segment["gradient"]
             if gradient == 'NULL' or (isinstance(gradient, float) and np.isnan(gradient)):
                 gradient = 0
-                
+
             if segment["gradient"] > 30: #only build dam if gradient lower than 3%
                 continue
 
@@ -283,6 +283,7 @@ class Beaver(Agent):
             flood_layer = temp_dam.flood_fill()
             if temp_dam.floods_non_water():
                 self.model.grid.place_agent(temp_dam, (x, y))
+                self.model.type[Dam].append(temp_dam)
                 self.dam = temp_dam
                 print(f"Beaver {getattr(self, 'unique_id', id(self))} built dam at {(x, y)}")
                 return
@@ -384,33 +385,32 @@ class Dam(Agent):
 
         #depth = varied
 
-        def flood_fill(self):
-            x0, y0 = self.pos
-            dem = self.model.dem
-            flood_layer = zeros(dem.shape)
-            r0, c0 = self.model.grid.cells_to_index(x0, y0)
-            assessed = set()
-            to_assess = set()
-            to_assess.add((r0, c0))
-            flood_extent = dem[r0, c0] + self.depth
+    def flood_fill(self):
+        x0, y0 = self.pos
+        dem = self.model.dem
+        flood_layer = zeros(dem.shape)
+        r0, c0 = self.model.grid.cells_to_index(x0, y0)
+        assessed = set()
+        to_assess = set()
+        to_assess.add((r0, c0))
+        flood_extent = dem[r0, c0] + self.depth
 
-            while to_assess:
-                r, c = to_assess.pop()
-                assessed.add((r, c))
-                if dem[r, c] <= flood_extent:
-                    flood_layer[r, c] = 1
-                    for r_adj, c_adj in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]:
-                        neighbour = (r + r_adj, c + c_adj)
-                        if 0 <= neighbour[0] < dem.shape[0] and 0 <= neighbour[1] < dem.shape[1] and neighbour not in assessed:
-                            to_assess.add(neighbour)
-            self.flooded_area = flood_layer
-            return flood_layer
+        while to_assess:
+            r, c = to_assess.pop()
+            assessed.add((r, c))
+            if dem[r, c] <= flood_extent:
+                flood_layer[r, c] = 1
+                for r_adj, c_adj in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]:                        neighbour = (r + r_adj, c + c_adj)
+                if 0 <= neighbour[0] < dem.shape[0] and 0 <= neighbour[1] < dem.shape[1] and neighbour not in assessed:
+                    to_assess.add(neighbour)
+        self.flooded_area = flood_layer
+        return flood_layer
 
-        def flood_land(self):
-            hsm = self.model.hsm
-            flooded_indices = np.argwhere(self.flooded_area == 1)
-            for r, c in flooded_indices:
-                if hsm[r, c] != 6:
-                    return True
-            return False
+    def flood_land(self):
+        hsm = self.model.hsm
+        flooded_indices = np.argwhere(self.flooded_area == 1)
+        for r, c in flooded_indices:
+            if hsm[r, c] != 6:
+                return True
+        return False
     
