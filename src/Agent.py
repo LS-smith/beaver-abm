@@ -153,7 +153,7 @@ class Beaver(Agent):
         mean = np.log(3000) #mean bankful length of terriroty is ~3km CHECK!!!
         sigma = 1.0
         bank_length = np.random.lognormal(mean=mean, sigma=sigma)
-        bank_length = np.clip(bank_length, 500, 30000) #spread is 0.5 - 3km CHECK!!!!
+        bank_length = np.clip(bank_length, 500, 3000) #spread is 0.5 - 3km CHECK!!!! that would be 10 and 600 squares you idiot
 
         cell_length = getattr(self.model.grid, "cell_width", 5)
         territory_cells = max(int(bank_length / cell_length), 1)
@@ -178,7 +178,7 @@ class Beaver(Agent):
 
         score = np.where(mask, -distance_to_water + (hsm - 2 ) * 10, np.inf) 
 
-        flat_indices = np.argsort(score, axis = None) [territory_cells]
+        flat_indices = np.argsort(score, axis = None) [:territory_cells]
         y_coords, x_coords =np.unravel_index(flat_indices, score.shape)
         self.territory = set((int(x), int(y)) for x, y in zip (x_coords, y_coords))
         self.territory_abandonment_timer = int(np.random.exponential(48)) #4 years?
@@ -349,7 +349,7 @@ class Juvenile(Beaver):
             if self.remove:
                 return
             start = time.time()
-            print(f"Beaver {getattr(self, 'unique_id', id(self))} startng territory formation")
+            print(f"Beaver {getattr(self, 'unique_id', id(self))} starting territory formation")
             self.form_territory()
             print(f"Beaver {getattr(self, 'unique_id', id(self))} finished territory formation")
             #print(f"Beaver {getattr(self, 'unique_id', id(self))} formed territory at {self.pos} with {len(self.territory)} cells.")

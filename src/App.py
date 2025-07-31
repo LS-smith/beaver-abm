@@ -5,7 +5,6 @@ import numpy as np
 from rasterio import open as rio_open
 import matplotlib.pyplot as plt
 import pandas as pd
-import os
 import skimage.transform as skt 
 
 
@@ -74,7 +73,7 @@ with rio_open('./data/DTM.tif') as dem:  # 5m resolution
 
 dem_dwn = downsample(dem)
 
-model = Flood_Model(dem=dem, initial_beavers=50, seed=42)
+model = Flood_Model(dem=dem, initial_beavers=10, seed=42)
 
 for i in range(120):
     model.step()

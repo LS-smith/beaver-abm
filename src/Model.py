@@ -8,7 +8,7 @@ from rasterio import open as rio_open
 from Agent import Beaver, Kit, Juvenile, Adult, Dam # if this is seperate files
 
 class Flood_Model(Model):
-    def __init__(self, dem, initial_beavers=50, seed=None, simulator=None): # initialise
+    def __init__(self, dem, initial_beavers=10, seed=None, simulator=None): # initialise
         super().__init__(seed=seed)
 
         with rio_open('./data/hsm_5m.tif') as hsm:
