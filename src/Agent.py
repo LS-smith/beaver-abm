@@ -21,6 +21,7 @@ class Beaver(Agent):
         self.territory = set() # territory coords
         self.territory_abandonment_timer = None 
         self.dispersal_attempts = 0
+        self.death_age = min(int(np.random.exponential(84)), 240)
 
 
 
@@ -62,7 +63,10 @@ class Beaver(Agent):
             else:
                 self.move()
 
-
+        self.age += 1
+        if self.age >= self.death_age:
+            self.remove = True
+            return
 
     def mate(self, x=None, y=None, max_dist=None):
         mates=[]
@@ -184,58 +188,6 @@ class Beaver(Agent):
         self.territory_abandonment_timer = int(np.random.exponential(48)) #4 years?
         print(f"Beaver {getattr(self, 'unique_id', id(self))} formed territory at {self.pos} with {len(self.territory)} cells.")
 
-        """""
-        ###for x, y in occupied:
-            ##if 0 <= x < fuzzy_mask.shape[1] and 0 <= y < fuzzy_mask.shape[0]:
-                #fuzzy_mask[y, x] = 0
-
-        #structure = np.array([[0,1,0],[1,1,1],[0,1,0]]) # rooks move connectivity - patches together are connected
-        #labelled, patch_count = label(fuzzy_mask, structure = structure)
-
-        #best_patch = None
-        #best_score = -np.inf
-        #patches_checked = 0
-        #max_patches = 200
-        
-        for patch_id in range(1, patch_count+1):
-            patch_cells = np.argwhere(labelled == patch_id)
-            patch_size = patch_cells.shape[0]
-            if patch_size < territory_cells // 20: # skips patches that are very small 1/20th of bankful length, ask Jonny! may need to tweak more to allow for increased fragmentation nin high competition areas.
-                continue
-            patches_checked += 1
-            if patches_checked > max_patches:
-                break
-
-            patch_hsms = hsm[tuple(patch_cells.T)]
-            patch_fuzzy = fuzzy_mask[tuple(patch_cells.T)]
-            mean_hsm = np.mean(patch_hsms[patch_hsms < 5])
-            mean_fuzzy = np.mean(patch_fuzzy)
-
-            scale = np.interp(mean_hsm, [2,4], [0.5, 2.0])
-            territory_cells_scaled = int(territory_cells * scale)
-            territory_cells_scaled = max(territory_cells_scaled, 1)
-
-
-            score = mean_hsm * 100 + mean_fuzzy * 100 -abs(patch_size - territory_cells_scaled)
-            if any((self.pos[1], self.pos[0]) == tuple(cell) for cell in patch_cells):
-                score += 1000 # make likely to choose patch in current position
-            if score > best_score:
-                best_score = score
-                best_patch = patch_cells
-
-        if best_patch is not None:
-            if best_patch.shape[0] > territory_cells_scaled:
-                chosen_territory = np.random.choice(best_patch.shape[0], territory_cells_scaled, replace=False)
-                best_patch = best_patch[chosen_territory]
-            self.territory = set((int(cell[1]), int(cell[0])) for cell in best_patch)
-            self.territory_abandonment_timer = int(np.random.exponential(48))
-            print(f"Beaver {getattr(self, 'unique_id', id(self))} formed territory at {self.pos} with {len(self.territory)} cells (length: {bank_length:0f}m).")
-        else:
-            self.territory = set()
-            print(f"Beaver {getattr(self, 'unique_id', id(self))} could not find territory. Poor beaver.")
-        """
-
-
     def abandon_territory(self):
         print(f"Beaver {getattr(self, 'unique_id', id(self))} abandoned territory at {self.pos} ")
         self.territory = set()
@@ -317,7 +269,12 @@ class Kit(Beaver):
         super().__init__(model, sex=sex, age=age)
 
     def step(self):
-        self.age += 1  
+
+        self.age += 1
+        if hasattr(self, "death_age") and self.age >= self.death_age:
+            self.remove = True
+            return
+
         
         neighbours = self.model.grid.get_cell_list_contents([self.pos]) # move with colony
         adults = [a for a in neighbours if isinstance(a, Adult)] #find adulgt in same cell
@@ -340,8 +297,9 @@ class Juvenile(Beaver):
         super().__init__(model, sex=sex, age=age)
 
     def step(self):
-        self.age += 1  
         super().step()
+        if self.remove:
+            return
 
         #assign territory
         if not self.territory:
@@ -352,7 +310,6 @@ class Juvenile(Beaver):
             print(f"Beaver {getattr(self, 'unique_id', id(self))} starting territory formation")
             self.form_territory()
             print(f"Beaver {getattr(self, 'unique_id', id(self))} finished territory formation")
-            #print(f"Beaver {getattr(self, 'unique_id', id(self))} formed territory at {self.pos} with {len(self.territory)} cells.")
             print(f"territory formation took {time.time() - start:.2f} seconds")
 
         # reproduction logic 
@@ -380,9 +337,10 @@ class Adult(Beaver):
         super().__init__(model, sex=sex, age=age)
     
     def step(self):
-        self.age += 1
         super().step()  # call base beaver logic (pairing, movement)
-
+        if self.remove:
+            return
+        
         # reproduction logic 
         if self.partner and self.partner.partner == self and self.unique_id < self.partner.unique_id:
             self.reproduction_timer += 1
@@ -392,14 +350,7 @@ class Adult(Beaver):
         else:
             self.reproduction_timer = 0
 
-        #TODO: partners dont re-pair when partner dies - they also dont move! fix
-        if self.age >= 84: 
-            # break pair bond if partner is alive
-            if self.partner and self.partner.partner == self:
-                self.partner.partner = None
-            self.partner = None # clear self.partner
-            self.remove = True
-            return
+        
 
 class Dam(Agent):
     def __init__(self, model, pos, depth):
