@@ -252,7 +252,7 @@ class Beaver(Agent):
             return self
 
 
-
+'''''
     def build_dam(self):
         if not self.territory: #if not in territory
             return
@@ -289,6 +289,8 @@ class Beaver(Agent):
                 return
         
         print ("Dam not built: too much water man!")
+    
+'''''
 
 class Kit(Beaver):
     # kits move with group, can't pair or reproduce, age up

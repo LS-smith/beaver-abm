@@ -3,7 +3,7 @@ from rasterio.enums import Resampling
 import numpy as np
 
 
-with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/landcover.tif') as landcover:
+with rio_open('./data/landcover.tif') as landcover:
     profile = landcover.profile
 
 ### upsample
@@ -54,7 +54,7 @@ with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/landcover.tif') 
         nodata=0,
     )
 
-    with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/hsm_5m.tif', 'w', **profile) as dst:
+    with rio_open('./data/hsm_5m.tif', 'w', **profile) as dst:
         dst.write(hsm_5m.astype(np.uint8), 1)
 
     print("Upsampling and habitat suitibility classification complete. output saved as 'hsm_5m'")

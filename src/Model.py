@@ -11,10 +11,10 @@ class Flood_Model(Model):
     def __init__(self, dem, initial_beavers=50, seed=None, simulator=None): # initialise
         super().__init__(seed=seed)
 
-        with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/hsm_5m.tif') as hsm:
+        with rio_open('./data/hsm_5m.tif') as hsm:
             self.hsm = hsm.read(1)
 
-        with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/distance_to_water_5m.tif') as dtw:
+        with rio_open('./data/distance_to_water_5m.tif') as dtw:
             self.distance_to_water = dtw.read(1)
 
         
@@ -41,9 +41,9 @@ class Flood_Model(Model):
             self.grid.place_agent(beaver, (x,y))
             self.type[Beaver].append(beaver)
 
-        print("aftermodel creation:")
+        print("after model creation:")
         print("beavers in model.type[Beaver]:", len(self.type[Beaver]))
-        print("total number of agents in the grid:", sum(len(cell_contents) for cell_contents, pos in self.grid.coord_iter()))
+        #print("total number of agents in the grid:", sum(len(cell_contents) for cell_contents, pos in self.grid.coord_iter()))
 
 
         self.datacollector = DataCollector({
@@ -56,7 +56,7 @@ class Flood_Model(Model):
             "Adults": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Adult)]),
             "territory_size": lambda m: [len(b.territory) if hasattr(b, "territory") and b.territory else 0 for b in m.type[Beaver]],
             "territory_location": lambda m: [list(b.territory) if hasattr(b, "territory") and b.territory else [] for b in m.type[Beaver]],
-            "Dams": lambda m: len(m.type[Dam]),
+            #"Dams": lambda m: len(m.type[Dam]),
             #"flooded_cell_count":
             #"Flooded_cell_location":
 

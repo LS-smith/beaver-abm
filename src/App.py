@@ -1,5 +1,5 @@
 
-from Model import BeaverModel  # your adapted model
+from Model import Flood_Model  # your adapted model
 from Agent import Beaver, Kit, Juvenile, Adult   # your Beaver agent class
 import numpy as np
 from rasterio import open as rio_open
@@ -68,16 +68,16 @@ def beaver_plot (dem, agents, step=None, save_path=None):
 
     print(f"step {step}: plotted {count} agents")
 
-with rio_open('/Users/r34093ls/Documents/GitHub/beaver-abm/data/DTM.tif') as dem:  # 5m resolution
+with rio_open('./data/DTM.tif') as dem:  # 5m resolution
             dem = dem.read(1)
 
 dem_dwn = downsample(dem)
 
-model = BeaverModel(dem=dem, initial_beavers=50, seed=42)
+model = Flood_Model(dem=dem, initial_beavers=50, seed=42)
 
 for i in range(120):
     model.step()
     if i % 12 == 0:
-        save_path = f'/Users/r34093ls/Documents/GitHub/beaver-abm/out/gif_step_{i:03d}.png'
+        save_path = f'./out/gif_step_{i:03d}.png'
         beaver_plot(dem_dwn, model.type[Beaver], step=i, save_path=save_path)
 
