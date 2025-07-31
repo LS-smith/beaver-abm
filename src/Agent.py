@@ -32,7 +32,7 @@ class Beaver(Agent):
             if self.territory_abandonment_timer <= 0:
                 self.abandon_territory()
         
-        potential_mates = self.mate()
+        potential_mates = self.mate(self.pos[0], self.pos[1], max_dist = int(np.random.exponential(1000)))
         if potential_mates:
             mate = self.random.choice(potential_mates)
             self.partner = mate
@@ -115,7 +115,7 @@ class Beaver(Agent):
         if possible_cells.size > 0:
             distances = np.linalg.norm(possible_cells - np.array([y_new, x_new]), axis = 1)
             best_idx = np.argmin(distances)
-            y_final, x_final = possible_cells(best_idx)
+            y_final, x_final = possible_cells[best_idx]
         else:
             x_final, y_final = x_new, y_new
 
