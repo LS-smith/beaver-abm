@@ -63,17 +63,6 @@ class Flood_Model(Model):
         })
         self.datacollector.collect(self)
 
-def stats (model, step):
-     agents = model.type[Beaver]
-     dams = model.type[Dam]
-     pop_size = len(agents)
-     num_kits= sum(isinstance(a, Kit) for a in agents)
-     num_juveniles = sum(isinstance(a, Juvenile) for a in agents)
-     num_adults = sum(isinstance(a, Adult) for a in agents)
-     num_dam = len(dams)
-     flooded_cells = sum(np.sum(dam.flooded_area) for dam in dams if dam.flooded_area is not None)
-
-
         if simulator is not None:
             self.simulator = simulator
             self.simulator.setup(self)   
