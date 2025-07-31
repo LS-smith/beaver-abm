@@ -8,6 +8,7 @@ import pandas as pd
 import os
 import skimage.transform as skt 
 
+
 def downsample (dem, max_size=1000):
      factor = max (dem.shape) / max_size
      if factor > 1:

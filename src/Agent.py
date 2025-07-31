@@ -3,6 +3,7 @@ import numpy as np
 import random
 from scipy.ndimage import label
 from numpy import zeros
+import time
 
 class Beaver(Agent):
     """Base Beaver Class"""
@@ -155,8 +156,7 @@ class Beaver(Agent):
         bank_length = np.clip(bank_length, 500, 30000) #spread is 0.5 - 3km CHECK!!!!
 
         cell_length = getattr(self.model.grid, "cell_width", 5)
-        territory_cells = int(bank_length / cell_length)
-        territory_cells = max(territory_cells, 1)
+        territory_cells = max(int(bank_length / cell_length), 1)
 
         occupied = set()
         for agent in self.model.type[Beaver]:
@@ -165,28 +165,47 @@ class Beaver(Agent):
 
         hsm = self.model.hsm
         distance_to_water = self.model.distance_to_water
-        water_mask = (hsm == 5)
+        #water_mask = (hsm == 5)
 
-        max_bank_dist = 20 #100m - check!!!!
-        fuzzy_water_dist = np.exp(-distance_to_water / max_bank_dist)
+        #max_bank_dist = 20 #100m - check!!!!
+        #fuzzy_water_dist = np.exp(-distance_to_water / max_bank_dist)
         habitat_mask = (hsm >= 2) & (hsm < 5)
-        fuzzy_mask = habitat_mask * fuzzy_water_dist
+        #fuzzy_mask = habitat_mask * fuzzy_water_dist
+        mask =habitat_mask.copy()
+        if occupied:
+            occupied_array = np.array(list(occupied))
+            mask[occupied_array[:,1], occupied_array[:,0]] = 0
 
-        for x, y in occupied:
-            if 0 <= x < fuzzy_mask.shape[1] and 0 <= y < fuzzy_mask.shape[0]:
-                fuzzy_mask[y, x] = 0
+        score = np.where(mask, -distance_to_water + (hsm - 2 ) * 10, np.inf) 
 
-        structure = np.array([[0,1,0],[1,1,1],[0,1,0]]) # rooks move connectivity - patches together are connected
-        labelled, patch_count = label(fuzzy_mask, structure = structure)
+        flat_indices = np.argsort(score, axis = None) [territory_cells]
+        y_coords, x_coords =np.unravel_index(flat_indices, score.shape)
+        self.territory = set((int(x), int(y)) for x, y in zip (x_coords, y_coords))
+        self.territory_abandonment_timer = int(np.random.exponential(48)) #4 years?
+        print(f"Beaver {getattr(self, 'unique_id', id(self))} formed territory at {self.pos} with {len(self.territory)} cells.")
 
-        best_patch = None
-        best_score = -np.inf
+        """""
+        ###for x, y in occupied:
+            ##if 0 <= x < fuzzy_mask.shape[1] and 0 <= y < fuzzy_mask.shape[0]:
+                #fuzzy_mask[y, x] = 0
+
+        #structure = np.array([[0,1,0],[1,1,1],[0,1,0]]) # rooks move connectivity - patches together are connected
+        #labelled, patch_count = label(fuzzy_mask, structure = structure)
+
+        #best_patch = None
+        #best_score = -np.inf
+        #patches_checked = 0
+        #max_patches = 200
+        
         for patch_id in range(1, patch_count+1):
             patch_cells = np.argwhere(labelled == patch_id)
             patch_size = patch_cells.shape[0]
             if patch_size < territory_cells // 20: # skips patches that are very small 1/20th of bankful length, ask Jonny! may need to tweak more to allow for increased fragmentation nin high competition areas.
                 continue
-            
+            patches_checked += 1
+            if patches_checked > max_patches:
+                break
+
             patch_hsms = hsm[tuple(patch_cells.T)]
             patch_fuzzy = fuzzy_mask[tuple(patch_cells.T)]
             mean_hsm = np.mean(patch_hsms[patch_hsms < 5])
@@ -214,7 +233,7 @@ class Beaver(Agent):
         else:
             self.territory = set()
             print(f"Beaver {getattr(self, 'unique_id', id(self))} could not find territory. Poor beaver.")
-
+        """
 
 
     def abandon_territory(self):
@@ -329,8 +348,12 @@ class Juvenile(Beaver):
             self.disperse()
             if self.remove:
                 return
+            start = time.time()
+            print(f"Beaver {getattr(self, 'unique_id', id(self))} startng territory formation")
             self.form_territory()
-            print(f"Beaver {getattr(self, 'unique_id', id(self))} formed territory at {self.pos} with {len(self.territory)} cells.")
+            print(f"Beaver {getattr(self, 'unique_id', id(self))} finished territory formation")
+            #print(f"Beaver {getattr(self, 'unique_id', id(self))} formed territory at {self.pos} with {len(self.territory)} cells.")
+            print(f"territory formation took {time.time() - start:.2f} seconds")
 
         # reproduction logic 
         if self.partner and self.partner.partner == self and self.unique_id < self.partner.unique_id:
