@@ -32,7 +32,7 @@ class Beaver(Agent):
             if self.territory_abandonment_timer <= 0:
                 self.abandon_territory()
         
-        potential_mates = self.mate(self.pos[0], self.pos[1], max_dist = int(np.random.exponential(1000)))
+        potential_mates = self.mate(self.pos[0], self.pos[1], max_dist = 1000)
         if potential_mates:
             mate = self.random.choice(potential_mates)
             self.partner = mate
@@ -77,10 +77,12 @@ class Beaver(Agent):
                and isinstance(a,Beaver)
                and a.sex!=self.sex
                and (a.partner is None or getattr(a.partner, "remove", False) or a.partner.partner != a)
-               and a.territory
             ):
                 if x is not None and y is not None and max_dist is not None:
-                    tx, ty =np.mean([p[0] for p in a.territory]), np.mean([p[1] for p in a.territory])
+                    if a.territory:
+                        tx, ty =np.mean([p[0] for p in a.territory]), np.mean([p[1] for p in a.territory])
+                    else:
+                        tx, ty = a.pos
                     dist = np.sqrt((tx - x) ** 2 + (ty - y) ** 2)
                     if dist > max_dist:
                         continue
@@ -135,34 +137,6 @@ class Beaver(Agent):
         if self.dispersal_attempts >= 5:
             print (f"Beaver {getattr(self, 'unique_id', id(self))} failed to disperse after 5 attempts. It is winter now, and without provisions they will surely perish. RIP ")
             self.remove = True
-
-    """
-    def disperse(self):
-        mean_dispersal_distance = 1000 # 5km / 5m grid
-        distance = int(np.random.exponential(mean_dispersal_distance))
-        angle = np.random.uniform(0, 2 * np.pi)
-        dx = int(distance *np.cos(angle))
-        dy = int(distance *np.sin(angle))
-        x0,y0 = self.pos
-        x_new, y_new = np.clip(x0 + dx, 0, self.model.dem.shape[1]-1),  np.clip(y0 + dy, 0, self.model.dem.shape[0]-1)
-        
-
-        potential_mates = self.mate(x_new,y_new, max_dist=distance)
-        if potential_mates:
-            mate = self.random.choice(potential_mates)
-            tx, ty =np.mean([p[0] for p in mate.territory]), np.mean([p[1] for p in mate.territory])
-            self.model.grid.move_agent (self, (int(tx), int(ty)))
-            self.partner =mate
-            mate.partner = self
-            self.dispersal_attempts = 0 
-            print (f"Beaver {getattr(self, 'unique_id', id(self))} found mate at {(int(tx), int(ty))}")
-
-        self.dispersal_attempts += 1
-        if self.dispersal_attempts >= 5:
-            print (f"Beaver {getattr(self, 'unique_id', id(self))} failed to disperse after 5 attempts. It is winter now, and without provisions they will perish. RIP ")
-            self.remove = True
-            return
-    """
 
 
     def move(self):
