@@ -32,28 +32,19 @@ class Beaver(Agent):
             if self.territory_abandonment_timer <= 0:
                 self.abandon_territory()
         
-        potential_mates = self.mate(self.pos[0], self.pos[1], max_dist = 1000)
-        if potential_mates:
-            mate = self.random.choice(potential_mates)
-            self.partner = mate
-            mate.partner = self
-
-        neighbours = self.model.grid.get_cell_list_contents([self.pos])
         if ( self.partner is None
             or getattr(self.partner, "remove", False)  # check if partner is not marked for removal
             or self.partner.partner != self
         ):
             # if no partner, or partner is marked for removal, or partner is not paired with self
             self.partner = None # clear partner
-            potential_mates = [
-                a for a in neighbours
-                if ( isinstance(a, Beaver) 
-                    and a.sex != self.sex and (a.partner is None or getattr(a.partner, "remove", False) 
-                    or a.partner.partner !=a))]
+
+            potential_mates = self.mate(self.pos[0], self.pos[1], max_dist = 1000)
             if potential_mates:
                 mate = self.random.choice(potential_mates)
                 self.partner = mate
                 mate.partner = self
+            
 
         #only move if doesnt have a territory - move together if paired else move alone.
         if not self.territory:
@@ -247,7 +238,7 @@ class Beaver(Agent):
             return self
 
 
-    '''''
+    
     def build_dam(self):
         if not self.territory: #if not in territory
             return
@@ -274,7 +265,7 @@ class Beaver(Agent):
                 if (x,y) not in self.territory:
                     continue
             
-            temp_dam = Dam(self.model, (x, y), depth=depth)
+            temp_dam = Dam(self.model, (x, y), depth=1.6)
             flood_layer = temp_dam.flood_fill()
             if temp_dam.floods_non_water():
                 self.model.grid.place_agent(temp_dam, (x, y))
@@ -285,7 +276,7 @@ class Beaver(Agent):
         
         print ("Dam not built: too much water man!")
     
-    '''''
+    
 
 class Kit(Beaver):
     # kits move with group, can't pair or reproduce, age up
@@ -319,10 +310,15 @@ class Juvenile(Beaver):
     # juveniles disperse away from group, pair and reproduce, !build dams!, age up
     def __init__(self, model, sex=None, age=0):
         super().__init__(model, sex=sex, age=age)
+        self.helper_timer = np.random.randint(12, 36)
 
     def step(self):
         super().step()
         if self.remove:
+            return
+        if self.helper_timer >0:
+            self.helper_timer -= 1
+
             return
 
         #assign territory
@@ -383,7 +379,7 @@ class Dam(Agent):
         self.depth = depth
         self.flooded_area = None
 
-        #depth = varied
+        depth = 1.6
 
     def flood_fill(self):
         x0, y0 = self.pos
