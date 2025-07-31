@@ -61,7 +61,9 @@ class Beaver(Agent):
                 if self.unique_id < self.partner.unique_id:  # only one of the pair moves both
                     self.colony()
             else:
-                self.move()
+                self.disperse()
+                if self.remove:
+                    return
 
         self.age += 1
         if self.age >= self.death_age:
@@ -84,9 +86,57 @@ class Beaver(Agent):
                         continue
                 mates.append(a)
             return mates
+        
+    def disperse(self):
+        mean_dispersal_distance = 1000 # 5km / 5m grid
+        cell_width = getattr(self.model.grid, "cell_width", 5)
+        water_threshold = 100
 
+        distance = int(np.random.exponential(mean_dispersal_distance))
+        angle = np.random.uniform(0, 2 * np.pi)
+        dx = int(distance *np.cos(angle))
+        dy = int(distance *np.sin(angle))
+        x0,y0 = self.pos
+        x_new, y_new = np.clip(x0 + dx, 0, self.model.dem.shape[1]-1),  np.clip(y0 + dy, 0, self.model.dem.shape[0]-1)
+        
+        potential_mates = self.mate(x_new,y_new, max_dist=distance)
+        if potential_mates:
+            mate = self.random.choice(potential_mates)
+            tx, ty =np.mean([p[0] for p in mate.territory]), np.mean([p[1] for p in mate.territory])
+            self.model.grid.move_agent (self, (int(tx), int(ty)))
+            self.partner =mate
+            mate.partner = self
+            self.dispersal_attempts = 0 
+            print (f"Beaver {getattr(self, 'unique_id', id(self))} found mate at {(int(tx), int(ty))}")
+            return
 
+        distance_to_water = self.model.distance_to_water
+        possible_cells = np.argwhere(distance_to_water <= water_threshold)
+        if possible_cells.size > 0:
+            distances = np.linalg.norm(possible_cells - np.array([y_new, x_new]), axis = 1)
+            best_idx = np.argmin(distances)
+            y_final, x_final = possible_cells(best_idx)
+        else:
+            x_final, y_final = x_new, y_new
 
+        self.model.grid.move_agent(self, (int(x_final), int(y_final)))
+
+        old_pos = self.pos
+        self.form_territory()
+        if self.territory:
+            self.dispersal_attempts = 0
+            print (f"Beaver {getattr (self, 'unique_id', id(self))} formed new territory at {(x_final, y_final)}")
+            return
+        else:
+            self.model.grid.move_agent(self, old_pos)
+            self.dispersal_attempts += 1
+            print (f"Beaver {getattr (self, 'unique_id', id(self))} found no suitable territory at {(x_final, y_final)}, dispersal attempt {self.dispersal_attepts} / 5 ")
+
+        if self.dispersal_attempts >= 5:
+            print (f"Beaver {getattr(self, 'unique_id', id(self))} failed to disperse after 5 attempts. It is winter now, and without provisions they will surely perish. RIP ")
+            self.remove = True
+
+    """
     def disperse(self):
         mean_dispersal_distance = 1000 # 5km / 5m grid
         distance = int(np.random.exponential(mean_dispersal_distance))
@@ -95,9 +145,9 @@ class Beaver(Agent):
         dy = int(distance *np.sin(angle))
         x0,y0 = self.pos
         x_new, y_new = np.clip(x0 + dx, 0, self.model.dem.shape[1]-1),  np.clip(y0 + dy, 0, self.model.dem.shape[0]-1)
-        new_position = (x_new, y_new)
+        
 
-        potential_mates = self.mate(x_new,y_new, max_dist=500)
+        potential_mates = self.mate(x_new,y_new, max_dist=distance)
         if potential_mates:
             mate = self.random.choice(potential_mates)
             tx, ty =np.mean([p[0] for p in mate.territory]), np.mean([p[1] for p in mate.territory])
@@ -108,11 +158,11 @@ class Beaver(Agent):
             print (f"Beaver {getattr(self, 'unique_id', id(self))} found mate at {(int(tx), int(ty))}")
 
         self.dispersal_attempts += 1
-        if self.dispersal_attempts >= 4:
-            print (f"Beaver {getattr(self, 'unique_id', id(self))} failed to disperse after 4 attempts. RIP ")
+        if self.dispersal_attempts >= 5:
+            print (f"Beaver {getattr(self, 'unique_id', id(self))} failed to disperse after 5 attempts. It is winter now, and without provisions they will perish. RIP ")
             self.remove = True
             return
-
+    """
 
 
     def move(self):
@@ -223,7 +273,7 @@ class Beaver(Agent):
             return self
 
 
-'''''
+    '''''
     def build_dam(self):
         if not self.territory: #if not in territory
             return
@@ -261,7 +311,7 @@ class Beaver(Agent):
         
         print ("Dam not built: too much water man!")
     
-'''''
+    '''''
 
 class Kit(Beaver):
     # kits move with group, can't pair or reproduce, age up
