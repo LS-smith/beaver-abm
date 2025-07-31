@@ -47,14 +47,19 @@ class Flood_Model(Model):
 
 
         self.datacollector = DataCollector({
-            "Beaver_Count": lambda m: len(m.type[Beaver]),
+            "Beaver_num": lambda m: len(m.type[Beaver]),
             "Paired Beavers": lambda m: len([a for a in m.type[Beaver] if a.partner and a.unique_id < a.partner.unique_id]),
             "Males": lambda m: len([a for a in m.type[Beaver] if a.sex == "M"]),
             "Females": lambda m: len([a for a in m.type[Beaver] if a.sex == "F"]),
             "Kits": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Kit)]),
             "Juveniles": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Juvenile)]),
             "Adults": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Adult)]),
-            "Dams": lambda m: len(m.type[Dam])
+            "territory_size": lambda m: [len(b.territory) if hasattr(b, "territory") and b.territory else 0 for b in m.type[Beaver]],
+            "territory_location": lambda m: [list(b.territory) if hasattr(b, "territory") and b.territory else [] for b in m.type[Beaver]],
+            "Dams": lambda m: len(m.type[Dam]),
+            #"flooded_cell_count":
+            #"Flooded_cell_location":
+
         })
         self.datacollector.collect(self)
 
