@@ -4,7 +4,6 @@ import random
 from scipy.ndimage import label
 from numpy import zeros
 import time
-from shapely.geometry import MultiPoint
 
 class Beaver(Agent):
     """Base Beaver Class"""
@@ -57,12 +56,11 @@ class Beaver(Agent):
                 if self.remove:
                     return
 
-        self.build_dam()
-
         self.age += 1
         if self.age >= self.death_age:
             self.remove = True
             return
+    
 
     def mate(self, x=None, y=None, max_dist=None):
         mates=[]
@@ -246,8 +244,7 @@ class Beaver(Agent):
         if not self.territory: #if not in territory
             return
 
-        points = [tuple(coord) for coord in self.territory]
-        territory_shape = MultiPoint(points).convex_hull
+        territory_shape = self.model.grid.cells_to_geometry(self.territory) #get territory shape
 
         water_in_territory = self.model.waterways[self.model.waterways.intersects(territory_shape)] #find all waterways intersecting territory
         if water_in_territory.empty:

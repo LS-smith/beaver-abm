@@ -4,11 +4,12 @@ from mesa.space import MultiGrid
 from mesa.experimental.devs import ABMSimulator
 import numpy as np
 from rasterio import open as rio_open
+import geopandas as gdp
 
 from Agent import Beaver, Kit, Juvenile, Adult, Dam # if this is seperate files
 
 class Flood_Model(Model):
-    def __init__(self, dem, initial_beavers=10, seed=None, simulator=None): # initialise
+    def __init__(self, dem, initial_beavers=1, seed=None, simulator=None): # initialise
         super().__init__(seed=seed)
 
         with rio_open('./data/hsm_5m.tif') as hsm:
@@ -17,7 +18,8 @@ class Flood_Model(Model):
         with rio_open('./data/distance_to_water_5m.tif') as dtw:
             self.distance_to_water = dtw.read(1)
 
-        
+        self.waterways = gdp.read_file('./data/water_network.shp') 
+
         self.dem = dem
         self.height, self.width = self.dem.shape
 

@@ -23,6 +23,7 @@ buff_water = waterways.set_geometry('buffer_geom')
 if 'geometry' in buff_water.columns and buff_water.geometry.name != 'geometry':
     buff_water = buff_water.drop(columns = ['geometry'])
 
+buff_water = buff_water.set_crs("epsg: 27700")
 buff_water.to_file('./data/buffered_waterways.shp')
 
 with rasterio.open('./data/hsm_5m.tif') as hsm_5m:
