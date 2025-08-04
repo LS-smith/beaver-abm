@@ -5,7 +5,7 @@ from shapely.geometry import Point, CAP_STYLE, JOIN_STYLE
 import numpy as np
 from scipy.ndimage import distance_transform_edt
 
-waterways = gdp.read_file('./data/water_network.shp')
+waterways = gdp.read_file('./data/water_network_clip.shp')
 
 waterways = waterways[~waterways['width'].isna()].copy()
 
@@ -24,9 +24,9 @@ if 'geometry' in buff_water.columns and buff_water.geometry.name != 'geometry':
     buff_water = buff_water.drop(columns = ['geometry'])
 
 buff_water = buff_water.set_crs("epsg: 27700")
-buff_water.to_file('./data/buffered_waterways.shp')
+buff_water.to_file('./data/buffered_waterways_clip.shp')
 
-with rasterio.open('./data/hsm_5m.tif') as hsm_5m:
+with rasterio.open('./data/hsm_5m_clip.tif') as hsm_5m:
     hsm = hsm_5m.read(1)
     transform = hsm_5m.transform
     shape = hsm.shape
@@ -45,6 +45,6 @@ distance_pixels = distance_transform_edt(channel_mask == 0)
 distance_m = distance_pixels * pixel_size
 
 profile.update(dtype=np.float32, count=1, nodata=None)
-with rasterio.open ('./data/distance_to_water_5m.tif', 'w', **profile) as dtw:
+with rasterio.open ('./data/distance_to_water_5m_clip.tif', 'w', **profile) as dtw:
                    dtw.write(distance_m.astype(np.float32), 1)
 

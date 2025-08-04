@@ -26,6 +26,7 @@ class Beaver(Agent):
 
 
     def step(self):
+        print(f"Agent {getattr(self, 'unique_id', id(self))} starting step")
         #check territory timer
         if self.territory and self.territory_abandonment_timer is not None:
             self.territory_abandonment_timer -= 1
@@ -239,7 +240,7 @@ class Beaver(Agent):
             return self
 
 
-    
+    '''''
     def build_dam(self):
         if not self.territory: #if not in territory
             return
@@ -277,7 +278,7 @@ class Beaver(Agent):
         
         print ("Dam not built: too much water man!")
     
-    
+    '''
 
 class Kit(Beaver):
     # kits move with group, can't pair or reproduce, age up
