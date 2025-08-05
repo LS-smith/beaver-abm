@@ -4,6 +4,9 @@ import random
 from scipy.ndimage import label
 from numpy import zeros
 import time
+from shapely.geometry import MultiPoint
+import rasterio
+from affine import Affine
 
 class Beaver(Agent):
     """Base Beaver Class"""
@@ -26,6 +29,11 @@ class Beaver(Agent):
 
 
     def step(self):
+
+        self.month += 1
+        if self.month > 12:
+            self.month = 1
+            
         print(f"Agent {getattr(self, 'unique_id', id(self))} starting step")
         #check territory timer
         if self.territory and self.territory_abandonment_timer is not None:
@@ -62,6 +70,8 @@ class Beaver(Agent):
             self.remove = True
             return
     
+        if self.territory:
+            self.build_dam()
 
     def mate(self, x=None, y=None, max_dist=None):
         mates=[]
@@ -188,11 +198,8 @@ class Beaver(Agent):
         distance_to_water = self.model.distance_to_water
         #water_mask = (hsm == 5)
 
-        #max_bank_dist = 20 #100m - check!!!!
-        #fuzzy_water_dist = np.exp(-distance_to_water / max_bank_dist)
-        habitat_mask = (hsm >= 2) & (hsm < 5)
-        #fuzzy_mask = habitat_mask * fuzzy_water_dist
-        mask =habitat_mask.copy()
+        waterway_buffer = 100
+        mask =(distance_to_water <= waterway_buffer) & (hsm >=2) & (hsm <5)
         if occupied:
             occupied_array = np.array(list(occupied))
             mask[occupied_array[:,1], occupied_array[:,0]] = 0
@@ -224,10 +231,11 @@ class Beaver(Agent):
 
     def reproduce(self):
         if self.partner is not None:
-            for _ in range(self.random.randint(1, 3)): # random number of kits between 1-3
+            for _ in range(self.random.randint(1, 4)): # random number of kits between 1-4
                 kit = Kit(self.model, sex=self.sex)
                 self.model.grid.place_agent(kit, self.pos)
                 self.model.type[Beaver].append(kit)
+                print(f"Kit created at {self.pos} by parent {getattr(self, 'unique_id', id(self))}")
 
 
     def age_up(self):
@@ -240,45 +248,70 @@ class Beaver(Agent):
             return self
 
 
-    '''''
+    
     def build_dam(self):
         if not self.territory: #if not in territory
+            print("No territory, skipping dam build.")
             return
 
-        territory_shape = self.model.grid.cells_to_geometry(self.territory) #get territory shape
+        if self.territory:
+            for agent in self.model.type[Beaver]:
+                if(agent is not self
+                   and agent.territory == self.territory
+                   and agent.unique_id<self.unique_id):
+                    return
+
+        transform = self.model.dem_transform
+        inv_transform = ~transform
+        real_coords = [rasterio.transform.xy(transform, y, x, offset='center') for (x, y) in self.territory]
+        territory_shape = MultiPoint(real_coords).convex_hull #get territory shape
+        print(f"Territory bounds: {territory_shape.bounds}")
 
         water_in_territory = self.model.waterways[self.model.waterways.intersects(territory_shape)] #find all waterways intersecting territory
+        print(f"Waterways intersecting territory: {len(water_in_territory)}")
         if water_in_territory.empty:
+            print("No waterways intersecting territory.")
             return
 
         for idx, segment in water_in_territory.iterrows(): 
             gradient = segment["gradient"]
+            print(f"Checking segment {idx} with gradient {gradient}")
             if gradient == 'NULL' or (isinstance(gradient, float) and np.isnan(gradient)):
                 gradient = 0
 
             if segment["gradient"] > 30: #only build dam if gradient lower than 3%
+                print(f"Segment {idx} gradient too high ({segment['gradient']}), skipping.")
                 continue
 
             channel = segment.geometry #all points along the channel
             num_points = int(channel.length //5) #every 5m can build
             for fraction in np.linspace(0,1, num_points):
                 point = channel.interpolate(fraction * channel.length)
-                x,y = int(point.x), int(point.y)
+                col, row = inv_transform * (point.x, point.y)
+                x,y = int(round(col)), int(round(row))
                 if (x,y) not in self.territory:
                     continue
+
+            existing_dams = self.model.grid.get_cell_list_contents([(x,y)])
+            if any(isinstance(a, Dam) for a in existing_dams):
+                print(f"Dam already exists at {(x, y)}, skipping.")
+                continue
             
-            temp_dam = Dam(self.model, (x, y), depth=1.6)
+            temp_dam = Dam(self.model, (x, y))
             flood_layer = temp_dam.flood_fill()
-            if temp_dam.floods_non_water():
+            if temp_dam.flood_land():
                 self.model.grid.place_agent(temp_dam, (x, y))
                 self.model.type[Dam].append(temp_dam)
                 self.dam = temp_dam
                 print(f"Beaver {getattr(self, 'unique_id', id(self))} built dam at {(x, y)}")
+                flooded_indices = np.argwhere(temp_dam.flooded_area == 1)
+                for r, c in flooded_indices:
+                    self.model.hsm[r, c] = 6 
                 return
-        
-        print ("Dam not built: too much water man!")
+            else:
+                print ("Dam not built: too much water man!")
     
-    '''
+
 
 class Kit(Beaver):
     # kits move with group, can't pair or reproduce, age up
@@ -350,6 +383,8 @@ class Juvenile(Beaver):
             self.model.type[Beaver].append(new_self)
             # return new_self.step() - no need to call step again, mutating the agent list by iterating
             return
+        
+        
 
 
 
@@ -378,16 +413,24 @@ class Dam(Agent):
     def __init__(self, model, pos, depth):
         super().__init__(model)
         self.pos = pos
-        self.depth = depth
-        self.flooded_area = None
 
-        depth = 1.6
+        if depth is None:
+            mu, sigma = 1.6, 0.44 #hartman 2006
+            lower, upper = 0.55, 2.0
+            while True:
+                d = np.random.normal(mu, sigma)
+                if lower <= d <= upper:
+                    self.depth = d
+                    break
+        else:
+            self.depth = depth
+        self.flooded_area = None
 
     def flood_fill(self):
         x0, y0 = self.pos
         dem = self.model.dem
         flood_layer = zeros(dem.shape)
-        r0, c0 = self.model.grid.cells_to_index(x0, y0)
+        r0, c0 = y0, x0
         assessed = set()
         to_assess = set()
         to_assess.add((r0, c0))

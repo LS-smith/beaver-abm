@@ -9,32 +9,42 @@ import geopandas as gdp
 from Agent import Beaver, Kit, Juvenile, Adult, Dam # if this is seperate files
 
 class Flood_Model(Model):
-    def __init__(self, dem, initial_beavers=1, seed=None, simulator=None): # initialise
+    def __init__(self, dem, dem_transform, initial_beavers=1, seed=None, simulator=None): # initialise
         super().__init__(seed=seed)
 
-        with rio_open('./data/hsm_5m.tif') as hsm:
+        print("Reading HSM...")
+        with rio_open('./data/hsm_5m_clip.tif') as hsm:
             self.hsm = hsm.read(1)
+        print("HSM loaded bruh")
 
-        with rio_open('./data/distance_to_water_5m.tif') as dtw:
+        print("Reading dtw...")
+        with rio_open('./data/distance_to_water_5m_clip.tif') as dtw:
             self.distance_to_water = dtw.read(1)
+        print("dtw also done...")
 
-        self.waterways = gdp.read_file('./data/water_network.shp') 
+        print("Reading waterways...")
+        self.waterways = gdp.read_file('./data/water_network_clip.shp') 
+        print("waterways not the issue...")
 
         self.dem = dem
+        self.dem_transform = dem_transform
+        
         self.height, self.width = self.dem.shape
 
         # properly initialise the grid
+        print("initialsing grid...")
         self.grid = MultiGrid(self.width, self.height, torus=True)
-
+        print("done")
         # initialise type as a set NOT list
         self.type = {Beaver: [], Dam: []}
 
-        valid_area =[(x,y)
-                    for y in range(self.height)
-                    for x in range(self.width)
-                    if self.dem[y,x] != 0]
+        print("building valid area.")
+        ys, xs = np.nonzero(self.dem != 0)
+        valid_area =np.column_stack((xs, ys))  
+        print("DONE .")
 
         # create initial beavers and add them to the grid
+        print("creating agents...")
         for _ in range(initial_beavers):
             x, y =self.random.choice(valid_area)
             #x = self.random.randrange(self.width)
@@ -42,6 +52,7 @@ class Flood_Model(Model):
             beaver = Juvenile(self) # add only adult beavers (may be self.unique_id)
             self.grid.place_agent(beaver, (x,y))
             self.type[Beaver].append(beaver)
+        print("agents created.")
 
         print("after model creation:")
         print("beavers in model.type[Beaver]:", len(self.type[Beaver]))
@@ -61,6 +72,7 @@ class Flood_Model(Model):
             #"Dams": lambda m: len(m.type[Dam]),
             #"flooded_cell_count":
             #"Flooded_cell_location":
+            #number of beavers in colony
 
         })
         self.datacollector.collect(self)
@@ -69,6 +81,10 @@ class Flood_Model(Model):
             self.simulator = simulator
             self.simulator.setup(self)   
         self.running = True
+
+        self.month = 1
+
+
 
     def step(self):
         # update the agents
