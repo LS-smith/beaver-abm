@@ -87,6 +87,11 @@ class Flood_Model(Model):
 
 
     def step(self):
+
+        self.month += 1
+        if self.month > 12:
+            self.month = 1
+
         # update the agents
         for agent in list(self.type[Beaver]):
             agent.step()

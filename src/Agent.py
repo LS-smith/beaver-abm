@@ -30,10 +30,6 @@ class Beaver(Agent):
 
     def step(self):
 
-        self.month += 1
-        if self.month > 12:
-            self.month = 1
-            
         print(f"Agent {getattr(self, 'unique_id', id(self))} starting step")
         #check territory timer
         if self.territory and self.territory_abandonment_timer is not None:
@@ -64,6 +60,7 @@ class Beaver(Agent):
                 self.disperse()
                 if self.remove:
                     return
+                
 
         self.age += 1
         if self.age >= self.death_age:
@@ -72,6 +69,23 @@ class Beaver(Agent):
     
         if self.territory:
             self.build_dam()
+
+        if np.random.rand() < 0.005:
+            print(f"Beaver {getattr(self, 'unique_id', id(self))} died. rip.")
+            self.remove = True
+            return
+
+        # reproduction logic 
+        if (self.partner and self.partner.partner == self 
+            and self.unique_id < self.partner.unique_id
+            and self.model.month in [4,5,6] ): #april, may or june
+
+            self.reproduction_timer += 1
+            if self.reproduction_timer >= 12:
+                self.reproduce()
+                self.reproduction_timer = 0
+        else:
+            self.reproduction_timer = 0
 
     def mate(self, x=None, y=None, max_dist=None):
         mates=[]
@@ -319,6 +333,11 @@ class Kit(Beaver):
         super().__init__(model, sex=sex, age=age)
 
     def step(self):
+        
+        if np.random.rand() < 0.01:
+            print(f"Kit {getattr(self, 'unique_id', id(self))} died due to background mortality.")
+            self.remove = True
+            return
 
         self.age += 1
         if hasattr(self, "death_age") and self.age >= self.death_age:
@@ -353,28 +372,9 @@ class Juvenile(Beaver):
             return
         if self.helper_timer >0:
             self.helper_timer -= 1
-
             return
 
-        #assign territory
-        if not self.territory:
-            self.disperse()
-            if self.remove:
-                return
-            start = time.time()
-            print(f"Beaver {getattr(self, 'unique_id', id(self))} starting territory formation")
-            self.form_territory()
-            print(f"Beaver {getattr(self, 'unique_id', id(self))} finished territory formation")
-            print(f"territory formation took {time.time() - start:.2f} seconds")
-
-        # reproduction logic 
-        if self.partner and self.partner.partner == self and self.unique_id < self.partner.unique_id:
-            self.reproduction_timer += 1
-            if self.reproduction_timer >= 12:
-                self.reproduce()
-                self.reproduction_timer = 0
-        else:
-            self.reproduction_timer = 0
+        
 
         new_self = self.age_up() # age up if applicable
         if new_self is not self:
@@ -398,14 +398,7 @@ class Adult(Beaver):
         if self.remove:
             return
         
-        # reproduction logic 
-        if self.partner and self.partner.partner == self and self.unique_id < self.partner.unique_id:
-            self.reproduction_timer += 1
-            if self.reproduction_timer >= 12:
-                self.reproduce()
-                self.reproduction_timer = 0
-        else:
-            self.reproduction_timer = 0
+        
 
         
 
