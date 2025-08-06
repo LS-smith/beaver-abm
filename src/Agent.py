@@ -7,6 +7,7 @@ import time
 from shapely.geometry import MultiPoint
 import rasterio
 from affine import Affine
+from collections import deque
 
 class Beaver(Agent):
     """Base Beaver Class"""
@@ -69,6 +70,13 @@ class Beaver(Agent):
     
         if self.territory:
             self.build_dam()
+
+        for dam in self.model.type[Dam]:
+            if dam.pos in self.territory and dam.abandoned and dam.repairable:
+                dam.abandoned = False
+                dam.decay_timer = None
+                dam.repairable = False
+                print(f"Dam at {dam.pos} repaired by beaver {getattr(self, 'unique_id', id(self))}")
 
         if np.random.rand() < 0.005:
             print(f"Beaver {getattr(self, 'unique_id', id(self))} died. rip.")
@@ -213,24 +221,74 @@ class Beaver(Agent):
         #water_mask = (hsm == 5)
 
         waterway_buffer = 100
-        mask =(distance_to_water <= waterway_buffer) & (hsm >=2) & (hsm <5)
+        mask =(distance_to_water <= waterway_buffer) & (hsm >=2) & (hsm <=4)
         if occupied:
             occupied_array = np.array(list(occupied))
             mask[occupied_array[:,1], occupied_array[:,0]] = 0
 
-        score = np.where(mask, -distance_to_water + (hsm - 2 ) * 10, np.inf) 
+        
+        radius = 600 #3km
+        cx, cy = self.pos
+        y_indices, x_indices = np.indices(mask.shape)
+        radius_mask = ((x_indices - cx) ** 2 + (y_indices - cy) ** 2) <= radius ** 2
+        mask = mask & radius_mask
+        
+        mask[cy, cx] = True
+        
+        labeled_array, num_features = label(mask)
+        territory_label = labeled_array[cy, cx]
 
-        flat_indices = np.argsort(score, axis = None) [:territory_cells]
-        y_coords, x_coords =np.unravel_index(flat_indices, score.shape)
-        self.territory = set((int(x), int(y)) for x, y in zip (x_coords, y_coords))
-        self.territory_abandonment_timer = int(np.random.exponential(48)) #4 years?
-        print(f"Beaver {getattr(self, 'unique_id', id(self))} formed territory at {self.pos} with {len(self.territory)} cells.")
+        if territory_label == 0:
+        # No connected region at beaver's location
+            self.territory = set()
+            print(f"Beaver {getattr(self, 'unique_id', id(self))} could not form territory at {self.pos}.")
+            return
+
+        visited = set()
+        patch = []
+    
+        def cell_score(y, x): # score: higher hsm is better, so use negative for sorting (highest first)
+            return -hsm[y, x]
+
+        frontier = [(cell_score(cy, cx), cy, cx)]
+        while frontier and len(patch) < territory_cells:
+            frontier.sort()
+            score, y, x = frontier.pop(0)
+            if (y, x) in visited:
+                continue
+            visited.add((y, x))
+        # Only add if not unsuitable or water
+            if labeled_array[y, x] == territory_label and hsm[y, x] in [2, 3, 4]:
+                patch.append((x, y))
+            # Add 4-neighbors
+                for dy, dx in [(-1,0), (1,0), (0,-1), (0,1)]:
+                    ny, nx = y + dy, x + dx
+                    if (0 <= ny < labeled_array.shape[0] and
+                        0 <= nx < labeled_array.shape[1] and
+                        (ny, nx) not in visited and
+                        labeled_array[ny, nx] == territory_label and
+                        hsm[ny, nx] in [2, 3, 4]):
+                        frontier.append((cell_score(ny, nx), ny, nx))
+
+        self.territory = set(patch)
+        self.territory_abandonment_timer = int(np.random.exponential(48)) # most territories last 4 years some much longer
+        print(f"Beaver {getattr(self, 'unique_id', id(self))} formed contiguous territory at {self.pos} with {len(self.territory)} cells.")
+
 
     def abandon_territory(self):
         print(f"Beaver {getattr(self, 'unique_id', id(self))} abandoned territory at {self.pos} ")
         self.territory = set()
         self.territory_abandonment_timer = None
         # move partner and kits with agent
+
+        for dam in self.model.type[Dam]:
+            if dam.pos in self.territory and not dam.abandoned:
+                dam.abandoned = True
+                dam.decay_timer = int(np.random.normal(24, 6))  # ~2 years, kernel spread
+                dam.repairable = True
+                print(f"Dam at {dam.pos} abandoned. Time to decay is {dam.decay_timer}")
+
+
         if self.partner:
             self.partner.territory = set()
             self.partner.territory_abandonment_timer = None
@@ -311,7 +369,7 @@ class Beaver(Agent):
                 print(f"Dam already exists at {(x, y)}, skipping.")
                 continue
             
-            temp_dam = Dam(self.model, (x, y))
+            temp_dam = Dam(self.model, (x, y), depth = None)
             flood_layer = temp_dam.flood_fill()
             if temp_dam.flood_land():
                 self.model.grid.place_agent(temp_dam, (x, y))
@@ -405,7 +463,12 @@ class Adult(Beaver):
 class Dam(Agent):
     def __init__(self, model, pos, depth):
         super().__init__(model)
+
         self.pos = pos
+
+        self.abandoned = False
+        self.decay_timer =None
+        self.repairable = False
 
         if depth is None:
             mu, sigma = 1.6, 0.44 #hartman 2006
@@ -447,4 +510,16 @@ class Dam(Agent):
             if hsm[r, c] != 6:
                 return True
         return False
+    
+    def step(self):
+        if self.abandoned:
+            if self.decay_timer is not None:
+                self.decay_timer -= 1
+                if self.decay_timer <= 0:
+                    print(f"Dam at {self.pos} decayed and removed.")
+                    flooded_indices = np.argwhere(self.flooded_area == 1)
+                    for r, c in flooded_indices:
+                        self.model.hsm[r, c] = 0  # Reset flooded cells
+                    self.remove = True
+                    self.repairable = False
     

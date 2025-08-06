@@ -42,6 +42,15 @@ def beaver_plot (dem, agents, step=None, save_path=None):
                 ty_down = ty * y_scale
                 plt.scatter(tx_down, ty_down, c=territory_colour, s=10, alpha=0.15,zorder = 2, marker = 's')
 
+
+        for dam in getattr(agent.model, "type", {}).get("Dam", []):
+            if hasattr(dam, "flooded_area") and dam.flooded_area is not None:
+                flooded_indices = np.argwhere(dam.flooded_area == 1)
+                for r, c in flooded_indices:
+                    r_down = r * y_scale
+                    c_down = c * x_scale
+                    plt.scatter(c_down, r_down, c="blue", s=8, alpha=0.2, zorder=3, marker='s')
+
         if isinstance(agent, Kit):
             color = "green"
         elif isinstance(agent, Juvenile):
@@ -69,7 +78,7 @@ def beaver_plot (dem, agents, step=None, save_path=None):
     print(f"step {step}: plotted {count} agents")
 
 print("Opening DEM...")
-with rio_open('./data/DTM_clip.tif') as dem_src:  # 5m resolution
+with rio_open('./data/DTM.tif') as dem_src:  # 5m resolution
             dem = dem_src.read(1)
             dem_transform = dem_src.transform
 print("not DEM!")
@@ -79,13 +88,13 @@ dem_dwn = downsample(dem)
 print("not DEM!")
 
 print("creating model!")
-model = Flood_Model(dem=dem, dem_transform=dem_transform, initial_beavers=1, seed=42)
+model = Flood_Model(dem=dem, dem_transform=dem_transform, initial_beavers=50, seed=42)
 print("IT has worked. glory be the beavers!")
 
 
-for i in range(10):
+for i in range(120):
     model.step()
-    if i % 5 == 0:
+    if i % 12 == 0:
         save_path = f'./out/gif_step_{i:03d}.png'
         beaver_plot(dem_dwn, model.type[Beaver], step=i, save_path=save_path)
 

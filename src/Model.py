@@ -9,21 +9,21 @@ import geopandas as gdp
 from Agent import Beaver, Kit, Juvenile, Adult, Dam # if this is seperate files
 
 class Flood_Model(Model):
-    def __init__(self, dem, dem_transform, initial_beavers=1, seed=None, simulator=None): # initialise
+    def __init__(self, dem, dem_transform, initial_beavers=50, seed=None, simulator=None): # initialise
         super().__init__(seed=seed)
 
         print("Reading HSM...")
-        with rio_open('./data/hsm_5m_clip.tif') as hsm:
+        with rio_open('./data/hsm_5m.tif') as hsm:
             self.hsm = hsm.read(1)
         print("HSM loaded bruh")
 
         print("Reading dtw...")
-        with rio_open('./data/distance_to_water_5m_clip.tif') as dtw:
+        with rio_open('./data/distance_to_water_5m.tif') as dtw:
             self.distance_to_water = dtw.read(1)
         print("dtw also done...")
 
         print("Reading waterways...")
-        self.waterways = gdp.read_file('./data/water_network_clip.shp') 
+        self.waterways = gdp.read_file('./data/Water_network.shp') 
         print("waterways not the issue...")
 
         self.dem = dem
@@ -78,7 +78,7 @@ class Flood_Model(Model):
             "Dam_locations": lambda m: [d.pos for d in m.type[Dam]],
             "Flooded_cells": lambda m: sum(np.sum(d.flooded_area) if hasattr(d, "flooded_area") and d.flooded_area is not None else 0
              for d in m.type[Dam]),
-             "Flood_location": lambda m: [[(r, c) for r, c in zip(*np.where(d.flooded_area == 1))]
+            "Flood_location": lambda m: [[(r, c) for r, c in zip(*np.where(d.flooded_area == 1))]
                 if hasattr(d, "flooded_area") and d.flooded_area is not None else []
                 for d in m.type[Dam]],
 
