@@ -49,7 +49,7 @@ class Flood_Model(Model):
             x, y =self.random.choice(valid_area)
             #x = self.random.randrange(self.width)
             #y = self.random.randrange(self.height)
-            beaver = Juvenile(self) # add only juvenile (may be self.unique_id)
+            beaver = Adult(self) # add only adult beaver (may be self.unique_id)
             self.grid.place_agent(beaver, (x,y))
             self.type[Beaver].append(beaver)
         print("agents created.")
