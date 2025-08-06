@@ -95,7 +95,7 @@ class Beaver(Agent):
         else:
             self.reproduction_timer = 0
 
-    def mate(self, x=None, y=None, max_dist=None):
+    def mate(self, x=None, y=None, max_dist=1000):
         mates=[]
         for a in self.model.type[Beaver]:
             if(a is not self
@@ -257,11 +257,11 @@ class Beaver(Agent):
             if (y, x) in visited:
                 continue
             visited.add((y, x))
-        # Only add if not unsuitable or water
-            if labeled_array[y, x] == territory_label and hsm[y, x] in [2, 3, 4]:
+        
+            if labeled_array[y, x] == territory_label and hsm[y, x] in [2, 3, 4]:# only add if not unsuitable or water
                 patch.append((x, y))
-            # Add 4-neighbors
-                for dy, dx in [(-1,0), (1,0), (0,-1), (0,1)]:
+            
+                for dy, dx in [(-1,0), (1,0), (0,-1), (0,1)]: #rooks move
                     ny, nx = y + dy, x + dx
                     if (0 <= ny < labeled_array.shape[0] and
                         0 <= nx < labeled_array.shape[1] and
@@ -339,14 +339,17 @@ class Beaver(Agent):
         territory_shape = MultiPoint(real_coords).convex_hull #get territory shape
         print(f"Territory bounds: {territory_shape.bounds}")
 
-        water_in_territory = self.model.waterways[self.model.waterways.intersects(territory_shape)] #find all waterways intersecting territory
+        water_in_territory = self.model.waterways[
+            (self.model.waterways.intersects(territory_shape)) & #find all waterways intersecting territory
+            (self.model.waterways["gradient"] <= 4)] #grad >4
         print(f"Waterways intersecting territory: {len(water_in_territory)}")
+        
         if water_in_territory.empty:
             print("No waterways intersecting territory.")
             return
         dam_attempts = 0
         for idx, segment in water_in_territory.iterrows(): 
-            if dam_attempts >= 3:
+            if dam_attempts >= 5:
                 print("Max dam attempts reached for this step.")
                 break
             gradient = segment["gradient"]
@@ -354,14 +357,14 @@ class Beaver(Agent):
             if gradient == 'NULL' or (isinstance(gradient, float) and np.isnan(gradient)):
                 gradient = 0
 
-            if segment["gradient"] > 30: #only build dam if gradient lower than 3%
-                print(f"Segment {idx} gradient too high ({segment['gradient']}), skipping.")
-                continue
+            # if segment["gradient"] > 4: #only build dam if gradient lower than 4%
+            #   print(f"Segment {idx} gradient too high ({segment['gradient']}), skipping.")
+            #  continue
 
             channel = segment.geometry #all points along the channel
             num_points = int(channel.length //5) #every 5m can build
             for fraction in np.linspace(0,1, num_points):
-                if dam_attempts >= 3:
+                if dam_attempts >= 5:
                     break
                 point = channel.interpolate(fraction * channel.length)
                 col, row = inv_transform * (point.x, point.y)
