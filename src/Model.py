@@ -45,13 +45,26 @@ class Flood_Model(Model):
 
         # create initial beavers and add them to the grid
         print("creating agents...")
-        for _ in range(initial_beavers):
-            x, y =self.random.choice(valid_area)
-            #x = self.random.randrange(self.width)
-            #y = self.random.randrange(self.height)
-            beaver = Adult(self) # add only adult beaver (may be self.unique_id)
-            self.grid.place_agent(beaver, (x,y))
-            self.type[Beaver].append(beaver)
+        release_groups = 10
+        beavers_per_group = 5
+
+        #find all suitable cells near water
+        suitable_cells = np.argwhere((self.hsm >= 2) & (self.hsm <= 4) & (self.distance_to_water < 50)   )
+
+        for group in range(release_groups):
+            center_idx = self.random.choice(range(len(suitable_cells)))
+            center_y, center_x = suitable_cells[center_idx]
+        for _ in range(beavers_per_group):
+            angle = self.random.uniform(0, 2 * np.pi)
+            radius = self.random.randint(0, 10)  # within 10 cells of center
+            dx = int(radius * np.cos(angle))
+            dy = int(radius * np.sin(angle))
+            x = np.clip(center_x + dx, 0, self.hsm.shape[1] - 1)
+            y = np.clip(center_y + dy, 0, self.hsm.shape[0] - 1)
+            if self.hsm[y, x] in [2, 3, 4]:
+                beaver = Adult(self, sex=self.random.choice(["M", "F"]))
+                self.grid.place_agent(beaver, (x, y))
+                self.type[Beaver].append(beaver)
         print("agents created.")
 
         print("after model creation:")

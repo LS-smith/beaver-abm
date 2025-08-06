@@ -373,25 +373,25 @@ class Beaver(Agent):
                 if (x,y) not in self.territory:
                     continue
 
-            existing_dams = self.model.grid.get_cell_list_contents([(x,y)])
-            if any(isinstance(a, Dam) for a in existing_dams):
-                print(f"Dam already exists at {(x, y)}, skipping.")
-                continue
+                existing_dams = self.model.grid.get_cell_list_contents([(x,y)])
+                if any(isinstance(a, Dam) for a in existing_dams):
+                    print(f"Dam already exists at {(x, y)}, skipping.")
+                    continue
             
-            temp_dam = Dam(self.model, (x, y), depth = None)
-            flood_layer = temp_dam.flood_fill()
-            if temp_dam.flood_land():
-                self.model.grid.place_agent(temp_dam, (x, y))
-                self.model.type[Dam].append(temp_dam)
-                self.dam = temp_dam
-                print(f"Beaver {getattr(self, 'unique_id', id(self))} built dam at {(x, y)}")
-                flooded_indices = np.argwhere(temp_dam.flooded_area == 1)
-                for r, c in flooded_indices:
-                    self.model.hsm[r, c] = 6 
-                return
-            else:
-                print ("Dam not built: too much water man!")
-                dam_attempts +=1
+                temp_dam = Dam(self.model, (x, y), depth = None)
+                flood_layer = temp_dam.flood_fill()
+                if temp_dam.flood_land():
+                    self.model.grid.place_agent(temp_dam, (x, y))
+                    self.model.type[Dam].append(temp_dam)
+                    self.dam = temp_dam
+                    print(f"Beaver {getattr(self, 'unique_id', id(self))} built dam at {(x, y)}")
+                    flooded_indices = np.argwhere(temp_dam.flooded_area == 1)
+                    for r, c in flooded_indices:
+                        self.model.hsm[r, c] = 6 
+                    return
+                else:
+                    print ("Dam not built: too much water man!")
+                    dam_attempts +=1
     
 
 
