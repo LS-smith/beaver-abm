@@ -247,8 +247,11 @@ class Beaver(Agent):
         visited = set()
         patch = []
     
-        def cell_score(y, x): # score: higher hsm is better, so use negative for sorting (highest first)
-            return -hsm[y, x]
+        def cell_score(y, x):
+            if hsm[y, x] in [2, 3, 4]:
+                return -hsm[y, x] + distance_to_water[y, x] * 0.01
+            else:
+                return np.inf 
 
         frontier = [(cell_score(cy, cx), cy, cx)]
         while frontier and len(patch) < territory_cells:
