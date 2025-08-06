@@ -157,7 +157,7 @@ class Beaver(Agent):
         else:
             self.model.grid.move_agent(self, old_pos)
             self.dispersal_attempts += 1
-            print (f"Beaver {getattr (self, 'unique_id', id(self))} found no suitable territory at {(x_final, y_final)}, dispersal attempt {self.dispersal_attepts} / 5 ")
+            print (f"Beaver {getattr (self, 'unique_id', id(self))} found no suitable territory at {(x_final, y_final)}, dispersal attempt {self.dispersal_attempts} / 5 ")
 
         if self.dispersal_attempts >= 5:
             print (f"Beaver {getattr(self, 'unique_id', id(self))} failed to disperse after 5 attempts. It is winter now, and without provisions they will surely perish. RIP ")
