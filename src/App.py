@@ -89,3 +89,7 @@ for i in range(10):
         save_path = f'./out/gif_step_{i:03d}.png'
         beaver_plot(dem_dwn, model.type[Beaver], step=i, save_path=save_path)
 
+model.datacollector.get_model_vars_dataframe().to_csv("./out/Beaver_data.csv")
+
+print("Simulation complete. The beavers have won. data saved to beaver_data.csv :)")
+

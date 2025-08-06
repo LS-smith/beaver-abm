@@ -49,7 +49,7 @@ class Flood_Model(Model):
             x, y =self.random.choice(valid_area)
             #x = self.random.randrange(self.width)
             #y = self.random.randrange(self.height)
-            beaver = Juvenile(self) # add only adult beavers (may be self.unique_id)
+            beaver = Juvenile(self) # add only juvenile (may be self.unique_id)
             self.grid.place_agent(beaver, (x,y))
             self.type[Beaver].append(beaver)
         print("agents created.")
@@ -67,14 +67,23 @@ class Flood_Model(Model):
             "Kits": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Kit)]),
             "Juveniles": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Juvenile)]),
             "Adults": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Adult)]),
-            "territory_size": lambda m: [len(b.territory) if hasattr(b, "territory") and b.territory else 0 for b in m.type[Beaver]],
-            "territory_location": lambda m: [list(b.territory) if hasattr(b, "territory") and b.territory else [] for b in m.type[Beaver]],
-            #"Dams": lambda m: len(m.type[Dam]),
-            #"flooded_cell_count":
-            #"Flooded_cell_location":
-            #number of beavers in colony
+            "Territory_size": lambda m: [len(b.territory) if hasattr(b, "territory") and b.territory else 0 for b in m.type[Beaver]],
+            "Territory_location": lambda m: [list(b.territory) if hasattr(b, "territory") and b.territory else [] for b in m.type[Beaver]],
+            "Beavers_per_colony": lambda m: [
+                {"Colony_size": sum([b.territory == t and b.territory for b in m.type[Beaver]]),
+                "Territory_size": len(t),
+                "Territory_location": list(t) }
+                for t in set(tuple(b.territory) for b in m.type[Beaver] if b.territory)],
+            "Dam_num": lambda m: len(m.type[Dam]),
+            "Dam_locations": lambda m: [d.pos for d in m.type[Dam]],
+            "Flooded_cells": lambda m: sum(np.sum(d.flooded_area) if hasattr(d, "flooded_area") and d.flooded_area is not None else 0
+             for d in m.type[Dam]),
+             "Flood_location": lambda m: [[(r, c) for r, c in zip(*np.where(d.flooded_area == 1))]
+                if hasattr(d, "flooded_area") and d.flooded_area is not None else []
+                for d in m.type[Dam]],
 
         })
+
         self.datacollector.collect(self)
 
         if simulator is not None:

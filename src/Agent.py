@@ -198,7 +198,7 @@ class Beaver(Agent):
         mean = np.log(3000) #mean bankful length of terriroty is ~3km CHECK!!!
         sigma = 1.0
         bank_length = np.random.lognormal(mean=mean, sigma=sigma)
-        bank_length = np.clip(bank_length, 500, 3000) #spread is 0.5 - 3km CHECK!!!! that would be 10 and 600 squares you idiot
+        bank_length = np.clip(bank_length, 500, 20000) #spread is 0.5 - 20 km CHECK!!!! that would be 10 and 600 squares you idiot
 
         cell_length = getattr(self.model.grid, "cell_width", 5)
         territory_cells = max(int(bank_length / cell_length), 1)
