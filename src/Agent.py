@@ -344,8 +344,11 @@ class Beaver(Agent):
         if water_in_territory.empty:
             print("No waterways intersecting territory.")
             return
-
+        dam_attempts = 0
         for idx, segment in water_in_territory.iterrows(): 
+            if dam_attempts >= 3:
+                print("Max dam attempts reached for this step.")
+                break
             gradient = segment["gradient"]
             print(f"Checking segment {idx} with gradient {gradient}")
             if gradient == 'NULL' or (isinstance(gradient, float) and np.isnan(gradient)):
@@ -358,6 +361,8 @@ class Beaver(Agent):
             channel = segment.geometry #all points along the channel
             num_points = int(channel.length //5) #every 5m can build
             for fraction in np.linspace(0,1, num_points):
+                if dam_attempts >= 3:
+                    break
                 point = channel.interpolate(fraction * channel.length)
                 col, row = inv_transform * (point.x, point.y)
                 x,y = int(round(col)), int(round(row))
@@ -382,6 +387,7 @@ class Beaver(Agent):
                 return
             else:
                 print ("Dam not built: too much water man!")
+                dam_attempts +=1
     
 
 
