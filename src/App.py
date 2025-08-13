@@ -77,17 +77,17 @@ def beaver_plot (dem, agents, step=None, save_path=None):
 
     print(f"step {step}: plotted {count} agents")
 
-print("Opening DEM...")
+#print("Opening DEM...")
 with rio_open('./data/DTM.tif') as dem_src:  # 5m resolution
             dem = dem_src.read(1)
             dem_transform = dem_src.transform
-print("not DEM!")
+#print("not DEM!")
 
-print("downsampling DEM!")
+#print("downsampling DEM!")
 dem_dwn = downsample(dem)
-print("not DEM!")
+#print("not DEM!")
 
-print("creating model!")
+#print("creating model!")
 model = Flood_Model(dem=dem, dem_transform=dem_transform, initial_beavers=50, seed=42)
 print("IT has worked. glory be the beavers!")
 

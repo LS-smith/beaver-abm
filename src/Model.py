@@ -12,19 +12,19 @@ class Flood_Model(Model):
     def __init__(self, dem, dem_transform, initial_beavers=50, seed=None, simulator=None): # initialise
         super().__init__(seed=seed)
 
-        print("Reading HSM...")
+        #print("Reading HSM...")
         with rio_open('./data/hsm_5m.tif') as hsm:
             self.hsm = hsm.read(1)
-        print("HSM loaded bruh")
+        #print("HSM loaded bruh")
 
-        print("Reading dtw...")
+        #print("Reading dtw...")
         with rio_open('./data/distance_to_water_5m.tif') as dtw:
             self.distance_to_water = dtw.read(1)
-        print("dtw also done...")
+        #print("dtw also done...")
 
-        print("Reading waterways...")
+        #print("Reading waterways...")
         self.waterways = gdp.read_file('./data/Water_network.shp') 
-        print("waterways not the issue...")
+        #print("waterways not the issue...")
 
         self.dem = dem
         self.dem_transform = dem_transform
@@ -32,19 +32,19 @@ class Flood_Model(Model):
         self.height, self.width = self.dem.shape
 
         # properly initialise the grid
-        print("initialsing grid...")
+        #print("initialsing grid...")
         self.grid = MultiGrid(self.width, self.height, torus=True)
-        print("done")
+        #print("done")
         # initialise type as a set NOT list
         self.type = {Beaver: [], Dam: []}
 
-        print("building valid area.")
+        #print("building valid area.")
         ys, xs = np.nonzero(self.dem != 0)
         valid_area =np.column_stack((xs, ys))  
-        print("DONE .")
+        #print("DONE .")
 
         # create initial beavers and add them to the grid
-        print("creating agents...")
+        #print("creating agents...")
         release_groups = 10
         beavers_per_group = 5
 
@@ -65,10 +65,10 @@ class Flood_Model(Model):
                     beaver = Adult(self, sex=self.random.choice(["M", "F"]))
                     self.grid.place_agent(beaver, (x, y))
                     self.type[Beaver].append(beaver)
-        print("agents created.")
+        #print("agents created.")
 
-        print("after model creation:")
-        print("beavers in model.type[Beaver]:", len(self.type[Beaver]))
+        #print("after model creation:")
+        #print("beavers in model.type[Beaver]:", len(self.type[Beaver]))
         #print("total number of agents in the grid:", sum(len(cell_contents) for cell_contents, pos in self.grid.coord_iter()))
 
 
