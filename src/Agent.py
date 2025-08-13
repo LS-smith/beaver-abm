@@ -163,6 +163,15 @@ class Beaver(Agent):
             print (f"Beaver {getattr(self, 'unique_id', id(self))} failed to disperse after 5 attempts. It is winter now, and without provisions they will surely perish. RIP ")
             self.remove = True
 
+        if (self.partner is None
+            or getattr(self.partner, "remove", False)
+            or self.partner.partner != self
+        ):
+            potential_mates = self.mate(self.pos[0], self.pos[1], max_dist=1000)
+            if potential_mates:
+                mate = self.random.choice(potential_mates)
+                self.partner = mate
+                mate.partner = self
 
     def move(self):
         possible_move = self.model.grid.get_neighborhood(self.pos, moore=False, include_center=False)

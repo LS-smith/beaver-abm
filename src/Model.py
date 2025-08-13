@@ -54,17 +54,17 @@ class Flood_Model(Model):
         for group in range(release_groups):
             center_idx = self.random.choice(range(len(suitable_cells)))
             center_y, center_x = suitable_cells[center_idx]
-        for _ in range(beavers_per_group):
-            angle = self.random.uniform(0, 2 * np.pi)
-            radius = self.random.randint(0, 10)  # within 10 cells of center
-            dx = int(radius * np.cos(angle))
-            dy = int(radius * np.sin(angle))
-            x = np.clip(center_x + dx, 0, self.hsm.shape[1] - 1)
-            y = np.clip(center_y + dy, 0, self.hsm.shape[0] - 1)
-            if self.hsm[y, x] in [2, 3, 4]:
-                beaver = Adult(self, sex=self.random.choice(["M", "F"]))
-                self.grid.place_agent(beaver, (x, y))
-                self.type[Beaver].append(beaver)
+            for _ in range(beavers_per_group):
+                angle = self.random.uniform(0, 2 * np.pi)
+                radius = self.random.randint(0, 10)  # within 10 cells of center
+                dx = int(radius * np.cos(angle))
+                dy = int(radius * np.sin(angle))
+                x = np.clip(center_x + dx, 0, self.hsm.shape[1] - 1)
+                y = np.clip(center_y + dy, 0, self.hsm.shape[0] - 1)
+                if self.hsm[y, x] in [2, 3, 4]:
+                    beaver = Adult(self, sex=self.random.choice(["M", "F"]))
+                    self.grid.place_agent(beaver, (x, y))
+                    self.type[Beaver].append(beaver)
         print("agents created.")
 
         print("after model creation:")
