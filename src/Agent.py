@@ -6,8 +6,6 @@ from numpy import zeros
 import time
 from shapely.geometry import MultiPoint
 import rasterio
-from affine import Affine
-from collections import deque
 
 class Beaver(Agent):
     """Base Beaver Class"""
@@ -84,8 +82,8 @@ class Beaver(Agent):
             return
 
         # reproduction logic 
-        if (self.partner and self.partner.partner == self 
-            and self.unique_id < self.partner.unique_id
+        if (self.sex =="F" and
+            self.partner and self.partner.partner == self 
             and self.model.month in [4,5,6] ): #april, may or june
 
             self.reproduction_timer += 1

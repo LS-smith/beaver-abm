@@ -45,26 +45,22 @@ class Flood_Model(Model):
 
         # create initial beavers and add them to the grid
         #print("creating agents...")
-        release_groups = 10
-        beavers_per_group = 5
+        num_pairs = initial_beavers // 2
 
         #find all suitable cells near water
         suitable_cells = np.argwhere((self.hsm >= 2) & (self.hsm <= 4) & (self.distance_to_water < 50)   )
 
-        for group in range(release_groups):
-            center_idx = self.random.choice(range(len(suitable_cells)))
-            center_y, center_x = suitable_cells[center_idx]
-            for _ in range(beavers_per_group):
-                angle = self.random.uniform(0, 2 * np.pi)
-                radius = self.random.randint(0, 10)  # within 10 cells of center
-                dx = int(radius * np.cos(angle))
-                dy = int(radius * np.sin(angle))
-                x = np.clip(center_x + dx, 0, self.hsm.shape[1] - 1)
-                y = np.clip(center_y + dy, 0, self.hsm.shape[0] - 1)
-                if self.hsm[y, x] in [2, 3, 4]:
-                    beaver = Adult(self, sex=self.random.choice(["M", "F"]))
-                    self.grid.place_agent(beaver, (x, y))
-                    self.type[Beaver].append(beaver)
+        release_sites = self.random.sample(range(len(suitable_cells)), num_pairs)
+        for idx in release_sites:
+            y, x = suitable_cells[idx]
+            male = Adult(self, sex="M")
+            female = Adult(self, sex="F")
+            male.partner = female
+            female.partner = male
+            self.grid.place_agent(male, (x, y))
+            self.grid.place_agent(female, (x, y))
+            self.type[Beaver].append(male)
+            self.type[Beaver].append(female)
         #print("agents created.")
 
         #print("after model creation:")
@@ -73,27 +69,48 @@ class Flood_Model(Model):
 
 
         self.datacollector = DataCollector({
-            "Beaver_num": lambda m: len(m.type[Beaver]),
-            "Paired Beavers": lambda m: len([a for a in m.type[Beaver] if a.partner and a.unique_id < a.partner.unique_id]),
-            "Males": lambda m: len([a for a in m.type[Beaver] if a.sex == "M"]),
-            "Females": lambda m: len([a for a in m.type[Beaver] if a.sex == "F"]),
-            "Kits": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Kit)]),
-            "Juveniles": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Juvenile)]),
-            "Adults": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Adult)]),
-            "Territory_size": lambda m: [len(b.territory) if hasattr(b, "territory") and b.territory else 0 for b in m.type[Beaver]],
-            "Territory_location": lambda m: [list(b.territory) if hasattr(b, "territory") and b.territory else [] for b in m.type[Beaver]],
-            "Beavers_per_colony": lambda m: [
-                {"Colony_size": sum([b.territory == t and b.territory for b in m.type[Beaver]]),
-                "Territory_size": len(t),
-                "Territory_location": list(t) }
+            "beaver_num": lambda m: len(m.type[Beaver]),
+
+            "paired_beavers": lambda m: len([a for a in m.type[Beaver] if a.partner and a.unique_id < a.partner.unique_id]),
+
+            "males": lambda m: len([a for a in m.type[Beaver] if a.sex == "M"]),
+
+            "females": lambda m: len([a for a in m.type[Beaver] if a.sex == "F"]),
+
+            "kits": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Kit)]),
+
+            "juveniles": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Juvenile)]),
+
+            "adults": lambda m: len([a for a in m.type[Beaver] if isinstance(a, Adult)]),
+
+            "beaver_locations": lambda m: [a.pos for a in m.type[Beaver]],
+
+            "colony_life_history": lambda m: [ {
+                    "colony_size": sum(b.territory == t and b.territory for b in m.type[Beaver]),
+                    "males": sum(b.territory == t and b.sex == "M" for b in m.type[Beaver]),
+                    "females": sum(b.territory == t and b.sex == "F" for b in m.type[Beaver]),
+                    "kits": sum(b.territory == t and isinstance(b, Kit) for b in m.type[Beaver]),
+                    "juveniles": sum(b.territory == t and isinstance(b, Juvenile) for b in m.type[Beaver]),
+                    "adults": sum(b.territory == t and isinstance(b, Adult) for b in m.type[Beaver]),
+                }
                 for t in set(tuple(b.territory) for b in m.type[Beaver] if b.territory)],
-            "Dam_num": lambda m: len(m.type[Dam]),
-            "Dam_locations": lambda m: [d.pos for d in m.type[Dam]],
-            "Flooded_cells": lambda m: sum(np.sum(d.flooded_area) if hasattr(d, "flooded_area") and d.flooded_area is not None else 0
-             for d in m.type[Dam]),
-            "Flood_location": lambda m: [[(r, c) for r, c in zip(*np.where(d.flooded_area == 1))]
-                if hasattr(d, "flooded_area") and d.flooded_area is not None else []
-                for d in m.type[Dam]],
+
+            "territory_size_cells": lambda m: [list(t) for t in set(tuple(b.territory) for b in m.type[Beaver] if b.territory)],
+
+            "territory_size_km2": lambda m: [len(t) * ((5*5)/1e6) for t in set(tuple(b.territory) for b in m.type[Beaver] if b.territory)],
+
+            #territory location as centroid
+            "territory_location": lambda m: [(sum(xs)/len(t), sum(ys)/len(t)) if len(t) > 0 else (None, None) for t in set(tuple(b.territory) for b in m.type[Beaver] if b.territory) for xs, ys in [zip(*t)] if len(t) > 0],
+
+            "territory_cells_location": lambda m: [list (t) for t in set(tuple(b.territory) for b in m.type[Beaver] if b.territory) ],
+
+            "dam_num": lambda m: len(m.type[Dam]),
+
+            "dam_locations": lambda m: [d.pos for d in m.type[Dam]],
+
+            "flooded_cells": lambda m: sum(np.sum(d.flooded_area) if hasattr(d, "flooded_area") and d.flooded_area is not None else 0 for d in m.type[Dam]),
+
+            "flood_cell_location": lambda m: [[(r, c) for r, c in zip(*np.where(d.flooded_area == 1))] if hasattr(d, "flooded_area") and d.flooded_area is not None else [] for d in m.type[Dam]],
 
         })
 
@@ -106,7 +123,7 @@ class Flood_Model(Model):
 
         self.month = 1
 
-
+    
 
     def step(self):
 
@@ -124,5 +141,3 @@ class Flood_Model(Model):
                 self.type[Beaver].remove(agent)
         
         self.datacollector.collect(self) # collect data on each step
-
-
