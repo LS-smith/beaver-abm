@@ -426,7 +426,8 @@ class Beaver(Agent):
                     #print(f"Beaver {getattr(self, 'unique_id', id(self))} built dam at {(x, y)}")
                     flooded_indices = np.argwhere(temp_dam.flooded_area == 1)
                     for r, c in flooded_indices:
-                        self.model.hsm[r, c] = 6 
+                        if 0 <= r < self.model.hsm.shape[0] and 0 <= c < self.model.hsm.shape[1]:
+                            self.model.hsm[r, c] = 6 
                     return
                 else:
                     #print ("Dam not built: too much water man!")
@@ -567,7 +568,8 @@ class Dam(Agent):
                     #print(f"Dam at {self.pos} decayed and removed.")
                     flooded_indices = np.argwhere(self.flooded_area == 1)
                     for r, c in flooded_indices:
-                        self.model.hsm[r, c] = 0  # Reset flooded cells
+                        if 0 <= r < self.model.hsm.shape[0] and 0 <= c < self.model.hsm.shape[1]:
+                            self.model.hsm[r, c] = 0  # Reset flooded cells
                     self.remove = True
                     self.repairable = False
     
