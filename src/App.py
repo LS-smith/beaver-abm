@@ -88,7 +88,7 @@ dem_dwn = downsample(dem)
 #print("not DEM!")
 
 #print("creating model!")
-model = Flood_Model(dem=dem, dem_transform=dem_transform, initial_beavers=50, seed=42)
+model = Flood_Model(dem=dem, dem_transform=dem_transform, initial_beavers=50, seed=None)
 #print("IT has worked. glory be the beavers!")
 
 
