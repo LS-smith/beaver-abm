@@ -18,18 +18,29 @@ class Beaver(Agent):
         self.sex = sex if sex else model.random.choice(['M', 'F'])
         self.partner = None
         self.age = age
-        self.reproduction_timer = 0
         self.remove = False # mark for removal
         self.territory = set() # territory coords
         self.territory_abandonment_timer = None 
         self.dispersal_attempts = 0
         self.death_age = min(int(np.random.exponential(84)), 240)
-
+        self.kits_this_year = False
+        self.breeding_month = None
 
 
     def step(self):
 
         #print(f"Agent {getattr(self, 'unique_id', id(self))} starting step")
+
+        # form territory if not already done
+        if not self.territory:
+            if self.partner and self.partner.partner == self:
+                if self.unique_id < self.partner.unique_id:  # Only one of the pair forms territory
+                    self.form_territory()
+                    self.partner.territory = set(self.territory)
+            else:
+                self.form_territory()
+            
+        
         #check territory timer
         if self.territory and self.territory_abandonment_timer is not None:
             self.territory_abandonment_timer -= 1
@@ -60,11 +71,6 @@ class Beaver(Agent):
                 if self.remove:
                     return
                 
-
-        self.age += 1
-        if self.age >= self.death_age:
-            self.remove = True
-            return
     
         if self.territory:
             self.build_dam()
@@ -81,17 +87,26 @@ class Beaver(Agent):
             self.remove = True
             return
 
+
+        #reproduction timer
+        if self.model.month ==1:
+            self.kits_this_year = False
+            if self.sex == "F":
+                self.breeding_month = self.random.choice([4, 5, 6])
+
         # reproduction logic 
         if (self.sex =="F" and
             self.partner and self.partner.partner == self 
-            and self.model.month in [4,5,6] ): #april, may or june
+            and self.model.month == self.breeding_month and  #april, may or june
+            not self.kits_this_year):
 
-            self.reproduction_timer += 1
-            if self.reproduction_timer >= 12:
-                self.reproduce()
-                self.reproduction_timer = 0
-        else:
-            self.reproduction_timer = 0
+            self.reproduce()
+            self.kits_this_year = True
+
+        self.age += 1
+        if self.age >= self.death_age:
+            self.remove = True
+            return
 
     def mate(self, x=None, y=None, max_dist=1000):
         mates=[]
@@ -286,6 +301,16 @@ class Beaver(Agent):
         self.territory_abandonment_timer = int(np.random.exponential(48)) # most territories last 4 years some much longer
         #print(f"Beaver {getattr(self, 'unique_id', id(self))} formed contiguous territory at {self.pos} with {len(self.territory)} cells.")
 
+        # assign the same territory to partner
+        if self.partner and self.partner.partner == self:
+            self.partner.territory = self.territory
+            self.partner.territory_abandonment_timer = self.territory_abandonment_timer
+
+        # assign the same territory to all offspring
+        for agent in self.model.grid.get_cell_list_contents([self.pos]):
+            if isinstance(agent, (Kit, Juvenile)) and not getattr(agent, "remove", False):
+                agent.territory = self.territory
+                agent.territory_abandonment_timer = self.territory_abandonment_timer
 
     def abandon_territory(self):
         #print(f"Beaver {getattr(self, 'unique_id', id(self))} abandoned territory at {self.pos} ")
@@ -316,10 +341,12 @@ class Beaver(Agent):
     def reproduce(self):
         if self.partner is not None:
             for _ in range(self.random.randint(1, 4)): # random number of kits between 1-4
-                kit = Kit(self.model, sex=self.sex)
+                kit = Kit(self.model, sex=self.random.choice(['M', 'F']))
+                kit.territory = self.territory  # inherit parent's territory
+                kit.territory_abandonment_timer = self.territory_abandonment_timer
                 self.model.grid.place_agent(kit, self.pos)
                 self.model.type[Beaver].append(kit)
-                print(f"Kit created at {self.pos} by parent {getattr(self, 'unique_id', id(self))}")
+                #print(f"Kit created at {self.pos} by parent {getattr(self, 'unique_id', id(self))}"){self.pos} by parent {getattr(self, 'unique_id', id(self))}")
 
 
     def age_up(self):
@@ -414,8 +441,8 @@ class Kit(Beaver):
 
     def step(self):
         
-        if np.random.rand() < 0.01:
-            print(f"Kit {getattr(self, 'unique_id', id(self))} died due to background mortality.")
+        if np.random.rand() < 0.005:
+            #print(f"Kit {getattr(self, 'unique_id', id(self))} died due to background mortality.")
             self.remove = True
             return
 
@@ -424,12 +451,11 @@ class Kit(Beaver):
             self.remove = True
             return
 
-        
-        neighbours = self.model.grid.get_cell_list_contents([self.pos]) # move with colony
-        adults = [a for a in neighbours if isinstance(a, Adult)] #find adulgt in same cell
-        if not adults:
-            self.remove = True
-            return
+        if self.territory:
+            adults_in_territory = [a for a in self.model.type[Beaver] if isinstance(a, Adult) and a.territory and self.territory and a.territory == self.territory]
+            if not adults_in_territory:
+                self.remove = True
+                return
 
         new_self = self.age_up() # age up if applicable
         if new_self is not self:
@@ -507,7 +533,7 @@ class Dam(Agent):
     def flood_fill(self):
         x0, y0 = self.pos
         dem = self.model.dem
-        flood_layer = zeros(dem.shape)
+        flood_layer = zeros(dem.shape, dtype = int)
         r0, c0 = y0, x0
         assessed = set()
         to_assess = set()

@@ -39,8 +39,8 @@ class Flood_Model(Model):
         self.type = {Beaver: [], Dam: []}
 
         #print("building valid area.")
-        ys, xs = np.nonzero(self.dem != 0)
-        valid_area =np.column_stack((xs, ys))  
+        #ys, xs = np.nonzero(self.dem != 0)
+        # valid_area =np.column_stack((xs, ys))  
         #print("DONE .")
 
         # create initial beavers and add them to the grid
@@ -48,19 +48,45 @@ class Flood_Model(Model):
         num_pairs = initial_beavers // 2
 
         #find all suitable cells near water
-        suitable_cells = np.argwhere((self.hsm >= 2) & (self.hsm <= 4) & (self.distance_to_water < 50)   )
+        suitable_cells = np.argwhere((self.hsm >= 2) & (self.hsm <= 4) & (self.distance_to_water < 50) & (self.dem != 0)   )
 
-        release_sites = self.random.sample(range(len(suitable_cells)), num_pairs)
-        for idx in release_sites:
-            y, x = suitable_cells[idx]
-            male = Adult(self, sex="M")
-            female = Adult(self, sex="F")
-            male.partner = female
-            female.partner = male
-            self.grid.place_agent(male, (x, y))
-            self.grid.place_agent(female, (x, y))
-            self.type[Beaver].append(male)
-            self.type[Beaver].append(female)
+        used_indices = set()
+        pairs_placed = 0
+
+        while pairs_placed < num_pairs:
+            idx1 = self.random.choice(range(len(suitable_cells)))
+            if idx1 in used_indices:
+                continue
+            y1, x1 = suitable_cells[idx1]
+            # find an adjacent suitable cell not already used
+            neighbors = set(
+                (y1 + dy, x1 + dx)
+                for dy in [-1, 0, 1]
+                for dx in [-1, 0, 1]
+                if not (dy == 0 and dx == 0)
+            )
+            neighbor_indices = [
+                i for i, (y, x) in enumerate(suitable_cells)
+                if (y, x) in neighbors and i not in used_indices
+            ]
+            if neighbor_indices:
+                idx2 = self.random.choice(neighbor_indices)
+                y2, x2 = suitable_cells[idx2]
+                male = Adult(self, sex="M")
+                female = Adult(self, sex="F")
+                male.partner = female
+                female.partner = male
+                female.breeding_month = self.random.choice([4, 5, 6])
+                female.kits_this_year = False
+                self.grid.place_agent(male, (x1, y1))
+                self.grid.place_agent(female, (x2, y2))
+                self.type[Beaver].append(male)
+                self.type[Beaver].append(female)
+                used_indices.update([idx1, idx2])
+                pairs_placed += 1
+            else:
+                used_indices.add(idx1)
+
         #print("agents created.")
 
         #print("after model creation:")
@@ -85,17 +111,16 @@ class Flood_Model(Model):
 
             "beaver_locations": lambda m: [a.pos for a in m.type[Beaver]],
 
-            "colony_life_history": lambda m: [ {
-                    "colony_size": sum(b.territory == t and b.territory for b in m.type[Beaver]),
-                    "males": sum(b.territory == t and b.sex == "M" for b in m.type[Beaver]),
-                    "females": sum(b.territory == t and b.sex == "F" for b in m.type[Beaver]),
-                    "kits": sum(b.territory == t and isinstance(b, Kit) for b in m.type[Beaver]),
-                    "juveniles": sum(b.territory == t and isinstance(b, Juvenile) for b in m.type[Beaver]),
-                    "adults": sum(b.territory == t and isinstance(b, Adult) for b in m.type[Beaver]),
-                }
-                for t in set(tuple(b.territory) for b in m.type[Beaver] if b.territory)],
+            "colony_life_history": lambda m: [
+                {"colony_size": sum(sorted(b.territory) == list(t) for b in m.type[Beaver] if b.territory),
+                 "males": sum(sorted(b.territory) == list(t) and b.sex == "M" for b in m.type[Beaver] if b.territory),
+                 "females": sum(sorted(b.territory) == list(t) and b.sex == "F" for b in m.type[Beaver] if b.territory),
+                 "kits": sum(sorted(b.territory) == list(t) and isinstance(b, Kit) for b in m.type[Beaver] if b.territory),
+                 "juveniles": sum(sorted(b.territory) == list(t) and isinstance(b, Juvenile) for b in m.type[Beaver] if b.territory),
+                 "adults": sum(sorted(b.territory) == list(t) and isinstance(b, Adult) for b in m.type[Beaver] if b.territory), }
+                for t in set(tuple(sorted(b.territory)) for b in m.type[Beaver] if b.territory)],
 
-            "territory_size_cells": lambda m: [list(t) for t in set(tuple(b.territory) for b in m.type[Beaver] if b.territory)],
+            "territory_size_cells": lambda m: [list(t) for t in set(tuple(sorted(b.territory)) for b in m.type[Beaver] if b.territory)],
 
             "territory_size_km2": lambda m: [len(t) * ((5*5)/1e6) for t in set(tuple(b.territory) for b in m.type[Beaver] if b.territory)],
 
