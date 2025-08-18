@@ -48,7 +48,7 @@ class Flood_Model(Model):
         num_pairs = initial_beavers // 2
 
         #find all suitable cells near water
-        suitable_cells = np.argwhere((self.hsm >= 2) & (self.hsm <= 4) & (self.distance_to_water < 50) & (self.dem != 0)   )
+        suitable_cells = np.argwhere((self.hsm >= 2) & (self.hsm <= 4) & (self.distance_to_water < 50)  )
 
         used_indices = set()
         pairs_placed = 0
