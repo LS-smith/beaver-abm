@@ -583,6 +583,7 @@ class Dam(Agent):
                     for r, c in flooded_indices:
                         if 0 <= r < self.model.hsm.shape[0] and 0 <= c < self.model.hsm.shape[1]:
                             self.model.hsm[r, c] = 0  # Reset flooded cells
+                    self.flooded_area = None
                     self.remove = True
                     self.repairable = False
     
