@@ -54,7 +54,9 @@ class Beaver(Agent):
             # if no partner, or partner is marked for removal, or partner is not paired with self
             self.partner = None # clear partner
 
-            potential_mates = self.mate(self.pos[0], self.pos[1], max_dist = 1000)
+            mate_search_mean = 1400
+            max_dist = int(np.random.exponential(mate_search_mean))
+            potential_mates = self.mate(self.pos[0], self.pos[1], max_dist = max_dist)
             if potential_mates:
                 mate = self.random.choice(potential_mates)
                 self.partner = mate
@@ -128,7 +130,7 @@ class Beaver(Agent):
             return mates
         
     def disperse(self):
-        mean_dispersal_distance = 1000 # 5km / 5m grid
+        mean_dispersal_distance = 1400 # 7km / 5m grid
         cell_width = getattr(self.model.grid, "cell_width", 5)
         water_threshold = 100
 
@@ -471,7 +473,7 @@ class Juvenile(Beaver):
     # juveniles disperse away from group, pair and reproduce, !build dams!, age up
     def __init__(self, model, sex=None, age=0):
         super().__init__(model, sex=sex, age=age)
-        self.helper_timer = np.random.randint(12, 36)
+        self.helper_timer = int(np.clip(np.random.exponential(6), 0, 24))
 
     def step(self):
         super().step()
@@ -481,7 +483,18 @@ class Juvenile(Beaver):
             self.helper_timer -= 1
             return
 
-        
+        if (self.partner is None
+            or getattr(self.partner, "remove", False)
+            or self.partner.partner != self
+        ):
+            mate_search_mean = 1400
+            max_dist = int(np.random.exponential(mate_search_mean))
+            potential_mates = self.mate(self.pos[0], self.pos[1], max_dist=max_dist)
+            #print(f"Juvenile {self.unique_id} searching for mate at {self.pos} with max_dist={max_dist}")
+            if potential_mates:
+                mate = self.random.choice(potential_mates)
+                self.partner = mate
+                mate.partner = self
 
         new_self = self.age_up() # age up if applicable
         if new_self is not self:
