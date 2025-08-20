@@ -164,5 +164,10 @@ class Flood_Model(Model):
             if getattr(agent, "remove", False):
                 self.grid.remove_agent(agent)
                 self.type[Beaver].remove(agent)
+
+        for dam in list(self.type[Dam]):
+            if getattr(dam, "remove", False):
+                self.grid.remove_agent(dam)
+                self.type[Dam].remove(dam)
         
         self.datacollector.collect(self) # collect data on each step
