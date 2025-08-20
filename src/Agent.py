@@ -569,8 +569,9 @@ class Dam(Agent):
         hsm = self.model.hsm
         flooded_indices = np.argwhere(self.flooded_area == 1)
         for r, c in flooded_indices:
-            if hsm[r, c] != 6:
-                return True
+            if 0 <= r < hsm.shape[0] and 0 <= c < hsm.shape[1]:
+                if hsm[r, c] != 6:
+                    return True
         return False
     
     def step(self):
