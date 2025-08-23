@@ -149,7 +149,7 @@ class Beaver(Agent):
             self.partner =mate
             mate.partner = self
             self.dispersal_attempts = 0 
-            print (f"Beaver {getattr(self, 'unique_id', id(self))} found mate at {(int(tx), int(ty))}")
+            #print (f"Beaver {getattr(self, 'unique_id', id(self))} found mate at {(int(tx), int(ty))}")
             return
 
         distance_to_water = self.model.distance_to_water
@@ -315,10 +315,6 @@ class Beaver(Agent):
                 agent.territory_abandonment_timer = self.territory_abandonment_timer
 
     def abandon_territory(self):
-        #print(f"Beaver {getattr(self, 'unique_id', id(self))} abandoned territory at {self.pos} ")
-        self.territory = set()
-        self.territory_abandonment_timer = None
-        # move partner and kits with agent
 
         for dam in self.model.type[Dam]:
             if dam.pos in self.territory and not dam.abandoned:
@@ -327,7 +323,13 @@ class Beaver(Agent):
                 dam.repairable = True
                 #print(f"Dam at {dam.pos} abandoned. Time to decay is {dam.decay_timer}")
 
+        #print(f"Beaver {getattr(self, 'unique_id', id(self))} abandoned territory at {self.pos} ")
+        self.territory = set()
+        self.territory_abandonment_timer = None
+        
 
+  
+        # move partner and kits with agent
         if self.partner:
             self.partner.territory = set()
             self.partner.territory_abandonment_timer = None
@@ -398,9 +400,9 @@ class Beaver(Agent):
             if gradient == 'NULL' or (isinstance(gradient, float) and np.isnan(gradient)):
                 gradient = 0
 
-            # if segment["gradient"] > 4: #only build dam if gradient lower than 4%
-            #   print(f"Segment {idx} gradient too high ({segment['gradient']}), skipping.")
-            #  continue
+            if segment["gradient"] > 4: #only build dam if gradient lower than 4%
+               #print(f"Segment {idx} gradient too high ({segment['gradient']}), skipping.")
+               continue
 
             channel = segment.geometry #all points along the channel
             num_points = int(channel.length //5) #every 5m can build
@@ -527,10 +529,12 @@ class Dam(Agent):
         super().__init__(model)
 
         self.pos = pos
-
+        self.dam_remove = False
         self.abandoned = False
         self.decay_timer =None
         self.repairable = False
+
+        #print(f"Dam created at {self.pos}, abandoned={self.abandoned}, decay_timer={self.decay_timer}")
 
         if depth is None:
             mu, sigma = 1.6, 0.44 #hartman 2006
@@ -575,7 +579,10 @@ class Dam(Agent):
         return False
     
     def step(self):
+
+        
         if self.abandoned:
+            #print(f"Dam at {self.pos} is abandoned with decay_timer={self.decay_timer}")
             if self.decay_timer is not None:
                 self.decay_timer -= 1
                 if self.decay_timer <= 0:
@@ -585,6 +592,6 @@ class Dam(Agent):
                         if 0 <= r < self.model.hsm.shape[0] and 0 <= c < self.model.hsm.shape[1]:
                             self.model.hsm[r, c] = 0  # Reset flooded cells
                     self.flooded_area = None
-                    self.remove = True
+                    self.dam_remove = True
                     self.repairable = False
     
