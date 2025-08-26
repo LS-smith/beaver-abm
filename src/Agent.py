@@ -207,14 +207,20 @@ class Beaver(Agent):
             if self.pos != new_area:
                 self.model.grid.move_agent(self, new_area)
             # move partner
-            if self.partner and not getattr(self.partner, "remove", False) and self.partner.pos is not None:
-                if self.partner.pos != new_area:
-                    self.model.grid.move_agent(self.partner, new_area)
+            if self.partner and not getattr(self.partner, "remove", False): 
+                if self.partner.pos is not None:
+                    if self.partner.pos != new_area:
+                        self.model.grid.move_agent(self.partner, new_area)
+                else:
+                    self.model.grid.place_agent(self.partner, new_area)
             # move kit
         for agent in self.model.grid.get_cell_list_contents([self.pos]):
-            if isinstance(agent, Kit) and not getattr(agent, "remove", False) and agent.pos is not None:
-                if agent.pos != new_area:
-                    self.model.grid.move_agent(agent, new_area)
+            if isinstance(agent, (Kit, Juvenile)) and not getattr(agent, "remove", False): 
+                if agent.pos is not None:
+                    if agent.pos != new_area:
+                        self.model.grid.move_agent(agent, new_area)
+                    else:
+                        self.model.grid.place_agent(agent, new_area)
 
 
 
@@ -323,7 +329,11 @@ class Beaver(Agent):
         if self.partner:
             self.partner.territory = set()
             self.partner.territory_abandonment_timer = None
-            self.model.grid.move_agent(self.partner, self.pos)
+            if self.partner.pos is not None:
+                self.model.grid.move_agent(self.partner, self.pos)
+            else:
+                self.model.grid.place_agent(self.partner, self.pos)
+
         for agent in self.model.grid.get_cell_list_contents([self.pos]):
             if isinstance(agent, Kit):
                 agent.territory = set()
