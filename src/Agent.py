@@ -219,8 +219,8 @@ class Beaver(Agent):
                 if agent.pos is not None:
                     if agent.pos != new_area:
                         self.model.grid.move_agent(agent, new_area)
-                    else:
-                        self.model.grid.place_agent(agent, new_area)
+                else:
+                    self.model.grid.place_agent(agent, new_area)
 
 
 
