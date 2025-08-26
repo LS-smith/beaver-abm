@@ -163,22 +163,24 @@ class Flood_Model(Model):
         for dam in list(self.type[Dam]):
             dam.step()
 
-        beavers_to_remove = [agent for agent in list(self.type[Beaver]) if getattr(agent, "remove", False)]
+        beavers_to_remove = [agent for agent in self.type[Beaver] if getattr(agent, "remove", False)]
         for agent in beavers_to_remove:
-            try:
-                self.grid.remove_agent(agent)
-            except ValueError:
-                pass
+            if agent.pos is not None:
+                try:
+                    self.grid.remove_agent(agent)
+                except ValueError:
+                    pass   
             self.type[Beaver].remove(agent)
 
         #print(f"Step {self.month}: Number of dams before removal: {len(self.type[Dam])}")
 
-        dams_to_remove = [dam for dam in list(self.type[Dam]) if dam.dam_remove]
+        dams_to_remove = [dam for dam in self.type[Dam] if dam.dam_remove]
         for dam in dams_to_remove:
-            try:
-                self.grid.remove_agent(dam)
-            except ValueError:
-                pass
+            if dam.pos is not None:
+                try:
+                    self.grid.remove_agent(dam)
+                except ValueError:
+                    pass
             self.type[Dam].remove(dam)
             #print(f"Step {self.month}: Number of dams after removal: {len(self.type[Dam])}")
         

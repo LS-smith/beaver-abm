@@ -9,7 +9,6 @@ import rasterio
 
 class Beaver(Agent):
     """Base Beaver Class"""
-
     def __init__(self, model, sex=None, age=0):
         """
 		* Initialise and populate the model
@@ -31,6 +30,25 @@ class Beaver(Agent):
 
         #print(f"Agent {getattr(self, 'unique_id', id(self))} starting step")
 
+        if not self.territory and ( self.partner is None
+                                   or getattr(self.partner, "remove", False)
+                                   or self.partner.partner != self):
+            if self.dispersal_attempts <5:
+                mate_search_radius = 4000 #20km
+                mate = self.mate(self.pos[0], self.pos[1], max_dist = mate_search_radius)
+                if mate:
+                    pass
+                else:
+                    self.dispersal_attempts += 1
+                    self.disperse()
+                    return
+            else:
+                self.form_territory()
+                if not self.territory:
+                    self.remove = True
+                    return
+                self.dispersal_attempts = 0
+
         # form territory if not already done
         if not self.territory:
             if self.partner and self.partner.partner == self:
@@ -46,21 +64,6 @@ class Beaver(Agent):
             self.territory_abandonment_timer -= 1
             if self.territory_abandonment_timer <= 0:
                 self.abandon_territory()
-        
-        if ( self.partner is None
-            or getattr(self.partner, "remove", False)  # check if partner is not marked for removal
-            or self.partner.partner != self
-        ):
-            # if no partner, or partner is marked for removal, or partner is not paired with self
-            self.partner = None # clear partner
-
-            mate_search_mean = 1400
-            max_dist = int(np.random.exponential(mate_search_mean))
-            potential_mates = self.mate(self.pos[0], self.pos[1], max_dist = max_dist)
-            if potential_mates:
-                mate = self.random.choice(potential_mates)
-                self.partner = mate
-                mate.partner = self
             
 
         #only move if doesnt have a territory - move together if paired else move alone.
@@ -110,14 +113,13 @@ class Beaver(Agent):
             self.remove = True
             return
 
-    def mate(self, x=None, y=None, max_dist=1000):
-        mates=[]
+    def mate(self, x=None, y=None, max_dist=4000):
+        potential_mates=[]
         for a in self.model.type[Beaver]:
             if(a is not self
                and isinstance(a,Beaver)
                and a.sex!=self.sex
-               and (a.partner is None or getattr(a.partner, "remove", False) or a.partner.partner != a)
-            ):
+               and (a.partner is None or getattr(a.partner, "remove", False) or a.partner.partner != a)):
                 if x is not None and y is not None and max_dist is not None:
                     if a.territory:
                         tx, ty =np.mean([p[0] for p in a.territory]), np.mean([p[1] for p in a.territory])
@@ -126,8 +128,14 @@ class Beaver(Agent):
                     dist = np.sqrt((tx - x) ** 2 + (ty - y) ** 2)
                     if dist > max_dist:
                         continue
-                mates.append(a)
-            return mates
+                potential_mates.append(a)
+        if potential_mates:
+            mate = self.random.choice(potential_mates)
+            self.partner = mate
+            mate.partner = self
+            self.dispersal_attempts = 0
+            return mate
+        return None
         
     def disperse(self):
         mean_dispersal_distance = 1400 # 7km / 5m grid
@@ -140,17 +148,6 @@ class Beaver(Agent):
         dy = int(distance *np.sin(angle))
         x0,y0 = self.pos
         x_new, y_new = np.clip(x0 + dx, 0, self.model.dem.shape[1]-1),  np.clip(y0 + dy, 0, self.model.dem.shape[0]-1)
-        
-        potential_mates = self.mate(x_new,y_new, max_dist=distance)
-        if potential_mates:
-            mate = self.random.choice(potential_mates)
-            tx, ty =np.mean([p[0] for p in mate.territory]), np.mean([p[1] for p in mate.territory])
-            self.model.grid.move_agent (self, (int(tx), int(ty)))
-            self.partner =mate
-            mate.partner = self
-            self.dispersal_attempts = 0 
-            #print (f"Beaver {getattr(self, 'unique_id', id(self))} found mate at {(int(tx), int(ty))}")
-            return
 
         distance_to_water = self.model.distance_to_water
         possible_cells = np.argwhere(distance_to_water <= water_threshold)
@@ -161,7 +158,10 @@ class Beaver(Agent):
         else:
             x_final, y_final = x_new, y_new
 
-        self.model.grid.move_agent(self, (int(x_final), int(y_final)))
+        if self.pos is not None:
+            self.model.grid.move_agent(self, (int(x_final), int(y_final)))
+        else:
+            self.model.grid.place_agent(self, (int(x_final), int(y_final)))
 
         old_pos = self.pos
         self.form_territory()
@@ -170,23 +170,12 @@ class Beaver(Agent):
             #print (f"Beaver {getattr (self, 'unique_id', id(self))} formed new territory at {(x_final, y_final)}")
             return
         else:
-            self.model.grid.move_agent(self, old_pos)
-            self.dispersal_attempts += 1
-            #print (f"Beaver {getattr (self, 'unique_id', id(self))} found no suitable territory at {(x_final, y_final)}, dispersal attempt {self.dispersal_attempts} / 5 ")
+            if old_pos is not None and self.pos is not None:
+                self.model.grid.move_agent(self, old_pos)
+            elif old_pos is not None and self.pos is None:
+                self.model.grid.place_agent(self, old_pos)
+            return
 
-        if self.dispersal_attempts >= 5:
-            #print (f"Beaver {getattr(self, 'unique_id', id(self))} failed to disperse after 5 attempts. It is winter now, and without provisions they will surely perish. RIP ")
-            self.remove = True
-
-        if (self.partner is None
-            or getattr(self.partner, "remove", False)
-            or self.partner.partner != self
-        ):
-            potential_mates = self.mate(self.pos[0], self.pos[1], max_dist=1000)
-            if potential_mates:
-                mate = self.random.choice(potential_mates)
-                self.partner = mate
-                mate.partner = self
 
     def move(self):
         possible_move = self.model.grid.get_neighborhood(self.pos, moore=False, include_center=False)
@@ -218,12 +207,12 @@ class Beaver(Agent):
             if self.pos != new_area:
                 self.model.grid.move_agent(self, new_area)
             # move partner
-            if self.partner and not getattr(self.partner, "remove", False):
+            if self.partner and not getattr(self.partner, "remove", False) and self.partner.pos is not None:
                 if self.partner.pos != new_area:
                     self.model.grid.move_agent(self.partner, new_area)
             # move kit
         for agent in self.model.grid.get_cell_list_contents([self.pos]):
-            if isinstance(agent, Kit) and not getattr(agent, "remove", False):
+            if isinstance(agent, Kit) and not getattr(agent, "remove", False) and agent.pos is not None:
                 if agent.pos != new_area:
                     self.model.grid.move_agent(agent, new_area)
 
@@ -253,7 +242,7 @@ class Beaver(Agent):
             mask[occupied_array[:,1], occupied_array[:,0]] = 0
 
         
-        radius = 600 #3km
+        radius = max(int(bank_length / cell_length * 1.5), 600) # radius based on bank_length, minimum 3km
         cx, cy = self.pos
         y_indices, x_indices = np.indices(mask.shape)
         radius_mask = ((x_indices - cx) ** 2 + (y_indices - cy) ** 2) <= radius ** 2
@@ -265,10 +254,11 @@ class Beaver(Agent):
         territory_label = labeled_array[cy, cx]
 
         if territory_label == 0:
-        # No connected region at beaver's location
-            self.territory = set()
+        # no connected region at beaver's location
+            if self.pos is not None:
+                self.territory = set()
             #print(f"Beaver {getattr(self, 'unique_id', id(self))} could not form territory at {self.pos}.")
-            return
+                return
 
         visited = set()
         patch = []
@@ -343,7 +333,7 @@ class Beaver(Agent):
 
 
     def reproduce(self):
-        if self.partner is not None:
+        if self.partner is not None and self.pos is not None:
             for _ in range(self.random.randint(1, 4)): # random number of kits between 1-4
                 kit = Kit(self.model, sex=self.random.choice(['M', 'F']))
                 kit.territory = self.territory  # inherit parent's territory
@@ -399,10 +389,6 @@ class Beaver(Agent):
             #print(f"Checking segment {idx} with gradient {gradient}")
             if gradient == 'NULL' or (isinstance(gradient, float) and np.isnan(gradient)):
                 gradient = 0
-
-            if segment["gradient"] > 4: #only build dam if gradient lower than 4%
-               #print(f"Segment {idx} gradient too high ({segment['gradient']}), skipping.")
-               continue
 
             channel = segment.geometry #all points along the channel
             num_points = int(channel.length //5) #every 5m can build
@@ -485,19 +471,6 @@ class Juvenile(Beaver):
             self.helper_timer -= 1
             return
 
-        if (self.partner is None
-            or getattr(self.partner, "remove", False)
-            or self.partner.partner != self
-        ):
-            mate_search_mean = 1400
-            max_dist = int(np.random.exponential(mate_search_mean))
-            potential_mates = self.mate(self.pos[0], self.pos[1], max_dist=max_dist)
-            #print(f"Juvenile {self.unique_id} searching for mate at {self.pos} with max_dist={max_dist}")
-            if potential_mates:
-                mate = self.random.choice(potential_mates)
-                self.partner = mate
-                mate.partner = self
-
         new_self = self.age_up() # age up if applicable
         if new_self is not self:
             self.remove = True
@@ -549,6 +522,8 @@ class Dam(Agent):
         self.flooded_area = None
 
     def flood_fill(self):
+        if self.pos is None:
+            return None
         x0, y0 = self.pos
         dem = self.model.dem
         flood_layer = zeros(dem.shape, dtype = int)
@@ -570,6 +545,8 @@ class Dam(Agent):
         return flood_layer
 
     def flood_land(self):
+        if self.flooded_area is None:
+            return False
         hsm = self.model.hsm
         flooded_indices = np.argwhere(self.flooded_area == 1)
         for r, c in flooded_indices:
