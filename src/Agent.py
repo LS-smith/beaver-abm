@@ -87,7 +87,7 @@ class Beaver(Agent):
                 dam.repairable = False
                 #print(f"Dam at {dam.pos} repaired by beaver {getattr(self, 'unique_id', id(self))}")
 
-        if np.random.rand() < 0.005:
+        if np.random.rand() < 0.002:
             #print(f"Beaver {getattr(self, 'unique_id', id(self))} died. rip.")
             self.remove = True
             return
@@ -202,17 +202,18 @@ class Beaver(Agent):
                 0<= y < self.model.dem.shape[0] and
                 self.model.dem[y,x] != 0):
                 valid_move.append(pos)
-        if valid_move:
-            new_area = self.random.choice(valid_move)
-            if self.pos != new_area:
-                self.model.grid.move_agent(self, new_area)
+        if not valid_move:
+            return
+        new_area = self.random.choice(valid_move)
+        if self.pos != new_area:
+            self.model.grid.move_agent(self, new_area)
             # move partner
-            if self.partner and not getattr(self.partner, "remove", False): 
-                if self.partner.pos is not None:
-                    if self.partner.pos != new_area:
-                        self.model.grid.move_agent(self.partner, new_area)
-                else:
-                    self.model.grid.place_agent(self.partner, new_area)
+        if self.partner and not getattr(self.partner, "remove", False): 
+            if self.partner.pos is not None:
+                if self.partner.pos != new_area:
+                    self.model.grid.move_agent(self.partner, new_area)
+            else:
+                self.model.grid.place_agent(self.partner, new_area)
             # move kit
         for agent in self.model.grid.get_cell_list_contents([self.pos]):
             if isinstance(agent, (Kit, Juvenile)) and not getattr(agent, "remove", False): 
@@ -338,7 +339,11 @@ class Beaver(Agent):
             if isinstance(agent, Kit):
                 agent.territory = set()
                 agent.territory_abandonment_timer = None
-                self.model.grid.move_agent(agent, self.pos)
+                if agent.pos is not None:
+                    self.model.grid.move_agent(agent, self.pos)
+                else:
+                    self.model.grid.place_agent(agent, self.pos)
+                    
 
 
 
@@ -442,7 +447,7 @@ class Kit(Beaver):
 
     def step(self):
         
-        if np.random.rand() < 0.005:
+        if np.random.rand() < 0.002:
             #print(f"Kit {getattr(self, 'unique_id', id(self))} died due to background mortality.")
             self.remove = True
             return
@@ -452,11 +457,10 @@ class Kit(Beaver):
             self.remove = True
             return
 
-        if self.territory:
-            adults_in_territory = [a for a in self.model.type[Beaver] if isinstance(a, Adult) and a.territory and self.territory and a.territory == self.territory]
-            if not adults_in_territory:
-                self.remove = True
-                return
+        adults_in_cell = [a for a in self.model.grid.get_cell_list_contents([self.pos]) if isinstance(a, Adult) and not getattr(a, "remove", False)]
+        if not adults_in_cell:
+            self.remove = True
+            return
 
         new_self = self.age_up() # age up if applicable
         if new_self is not self:
