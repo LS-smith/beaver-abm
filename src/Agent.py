@@ -1,41 +1,39 @@
-from mesa import Agent
-import numpy as np
+
 import random
-from scipy.ndimage import label
-from numpy import zeros
 import time
-from shapely.geometry import MultiPoint
+import numpy as np
 import rasterio
+from mesa import Agent
+from numpy import zeros
+from scipy.ndimage import label
+from shapely.geometry import MultiPoint
+
 
 class Beaver(Agent):
-    """Base Beaver Class"""
+    # Base Beaver class with mating, territory formation, dispersal, and dam building
+    
     def __init__(self, model, sex=None, age=0):
-        """
-		* Initialise and populate the model
-		"""
-        super().__init__(model) 
+        super().__init__(model)
         self.sex = sex if sex else model.random.choice(['M', 'F'])
         self.partner = None
         self.age = age
-        self.remove = False # mark for removal
-        self.territory = set() # territory coords
-        self.territory_abandonment_timer = None 
+        self.remove = False  # Mark for removal
+        self.territory = set()  # Territory coordinates
+        self.territory_abandonment_timer = None
         self.dispersal_attempts = 0
         self.death_age = min(int(np.random.exponential(84)), 240)
         self.kits_this_year = False
         self.breeding_month = None
 
-
     def step(self):
-
-        #print(f"Agent {getattr(self, 'unique_id', id(self))} starting step")
-
-        if not self.territory and ( self.partner is None
+        # Execute one time step of beaver behaviour
+        # Check for territory and mate availability
+        if not self.territory and (self.partner is None
                                    or getattr(self.partner, "remove", False)
                                    or self.partner.partner != self):
-            if self.dispersal_attempts <5:
-                mate_search_radius = 4000 #20km
-                mate = self.mate(self.pos[0], self.pos[1], max_dist = mate_search_radius)
+            if self.dispersal_attempts < 5:
+                mate_search_radius = 4000  # 20km
+                mate = self.mate(self.pos[0], self.pos[1], max_dist=mate_search_radius)
                 if mate:
                     pass
                 else:
@@ -49,72 +47,71 @@ class Beaver(Agent):
                     return
                 self.dispersal_attempts = 0
 
-        # form territory if not already done
+        # Form territory if not already done
         if not self.territory:
             if self.partner and self.partner.partner == self:
-                if self.unique_id < self.partner.unique_id:  # Only one of the pair forms territory
+                # Only one of the pair forms territory
+                if self.unique_id < self.partner.unique_id:
                     self.form_territory()
                     self.partner.territory = set(self.territory)
             else:
                 self.form_territory()
-            
-        
-        #check territory timer
+
+        # Check territory timer
         if self.territory and self.territory_abandonment_timer is not None:
             self.territory_abandonment_timer -= 1
             if self.territory_abandonment_timer <= 0:
                 self.abandon_territory()
-            
 
-        #only move if doesnt have a territory - move together if paired else move alone.
+        # Only move if doesn't have territory - move together if paired
         if not self.territory:
             if self.partner and self.partner.partner == self:
-                if self.unique_id < self.partner.unique_id:  # only one of the pair moves both
+                # Only one of the pair moves both
+                if self.unique_id < self.partner.unique_id:
                     self.colony()
             else:
                 self.disperse()
                 if self.remove:
                     return
-                
-    
+
         if self.territory:
             self.build_dam()
 
+        # Repair abandoned dams in territory
         for dam in self.model.type[Dam]:
             if dam.pos in self.territory and dam.abandoned and dam.repairable:
                 dam.abandoned = False
                 dam.decay_timer = None
                 dam.repairable = False
-                #print(f"Dam at {dam.pos} repaired by beaver {getattr(self, 'unique_id', id(self))}")
 
+        # Background mortality
         if np.random.rand() < 0.002:
-            #print(f"Beaver {getattr(self, 'unique_id', id(self))} died. rip.")
             self.remove = True
             return
 
-
-        #reproduction timer
-        if self.model.month ==1:
+        # Reproduction timer reset
+        if self.model.month == 1:
             self.kits_this_year = False
             if self.sex == "F":
-                self.breeding_month = self.random.choice([4, 5, 6])
+                self.breeding_month = self.random.choice([4, 5, 6]) # Produce kits in April, May or June
 
-        # reproduction logic 
-        if (self.sex =="F" and
+        # Reproduction logic
+        if (self.sex == "F" and
             self.partner and self.partner.partner == self 
-            and self.model.month == self.breeding_month and  #april, may or june
+            and self.model.month == self.breeding_month and  
             not self.kits_this_year):
-
             self.reproduce()
             self.kits_this_year = True
 
+        # Age and mortality
         self.age += 1
         if self.age >= self.death_age:
             self.remove = True
             return
 
     def mate(self, x=None, y=None, max_dist=4000):
-        potential_mates=[]
+        # Find and establish a mate relationship
+        potential_mates = []
         for a in self.model.type[Beaver]:
             if(a is not self
                and isinstance(a,Beaver)
@@ -129,6 +126,7 @@ class Beaver(Agent):
                     if dist > max_dist:
                         continue
                 potential_mates.append(a)
+        
         if potential_mates:
             mate = self.random.choice(potential_mates)
             self.partner = mate
@@ -138,7 +136,8 @@ class Beaver(Agent):
         return None
         
     def disperse(self):
-        mean_dispersal_distance = 1400 # 7km / 5m grid
+        # Move beaver to a new location using exponential dispersal distance
+        mean_dispersal_distance = 1400  # 7km / 5m grid
         cell_width = getattr(self.model.grid, "cell_width", 5)
         water_threshold = 100
 
@@ -151,6 +150,7 @@ class Beaver(Agent):
 
         distance_to_water = self.model.distance_to_water
         possible_cells = np.argwhere(distance_to_water <= water_threshold)
+        
         if possible_cells.size > 0:
             distances = np.linalg.norm(possible_cells - np.array([y_new, x_new]), axis = 1)
             best_idx = np.argmin(distances)
@@ -167,7 +167,6 @@ class Beaver(Agent):
         self.form_territory()
         if self.territory:
             self.dispersal_attempts = 0
-            #print (f"Beaver {getattr (self, 'unique_id', id(self))} formed new territory at {(x_final, y_final)}")
             return
         else:
             if old_pos is not None and self.pos is not None:
@@ -176,29 +175,13 @@ class Beaver(Agent):
                 self.model.grid.place_agent(self, old_pos)
             return
 
-
-    def move(self):
+    def colony(self):
+        # Move partner and kits together as a unit
         possible_move = self.model.grid.get_neighborhood(self.pos, moore=False, include_center=False)
         valid_move = []
         for pos in possible_move:
             x, y = pos
-            if( 0<= x < self.model.dem.shape[1] and
-                0<= y < self.model.dem.shape[0] and
-                self.model.dem[y,x] != 0 ):
-                valid_move.append(pos)
-        if valid_move:
-            new_area = self.random.choice(valid_move)
-            if self.pos != new_area:
-                self.model.grid.move_agent(self, new_area)
-    
-
-
-    def colony(self): #moving partner and kits together as a unit
-        possible_move = self.model.grid.get_neighborhood(self.pos, moore=False, include_center=False)
-        valid_move = []
-        for pos in possible_move:
-            x, y = pos
-            if( 0<= x < self.model.dem.shape[1] and
+            if (0<= x < self.model.dem.shape[1] and
                 0<= y < self.model.dem.shape[0] and
                 self.model.dem[y,x] != 0):
                 valid_move.append(pos)
@@ -226,11 +209,12 @@ class Beaver(Agent):
 
 
     def form_territory(self):
+        # Form territory along suitable waterways
         cell_length = getattr(self.model.grid, "cell_width", 5)
-        mean = np.log(3000) #mean bankful length of terriroty is ~3km CHECK!!!
+        mean = np.log(3000)  # Mean bankful length of territory is ~3km
         sigma = 0.5
         bank_length = np.random.lognormal(mean=mean, sigma=sigma)
-        bank_length = np.clip(bank_length, 500, 20000) #spread is 0.5 - 20 km CHECK!!!! that would be 10 and 600 squares you idiot
+        bank_length = np.clip(bank_length, 500, 20000)  # 0.5 - 20 km range
         territory_cells = max(int(bank_length / cell_length), 1)
 
         occupied = set()
@@ -240,31 +224,28 @@ class Beaver(Agent):
 
         hsm = self.model.hsm
         distance_to_water = self.model.distance_to_water
-        #water_mask = (hsm == 5)
 
         waterway_buffer = 100
         mask =(distance_to_water <= waterway_buffer) & (hsm >=2) & (hsm <=4)
         if occupied:
             occupied_array = np.array(list(occupied))
-            mask[occupied_array[:,1], occupied_array[:,0]] = 0
+            mask[occupied_array[:, 1], occupied_array[:, 0]] = 0
 
-        
-        radius = max(int(bank_length / cell_length * 1.5), 600) # radius based on bank_length, minimum 3km
+        # Create radius mask based on territory size
+        radius = max(int(bank_length / cell_length * 1.5), 600)  # Minimum 3km
         cx, cy = self.pos
         y_indices, x_indices = np.indices(mask.shape)
         radius_mask = ((x_indices - cx) ** 2 + (y_indices - cy) ** 2) <= radius ** 2
         mask = mask & radius_mask
-        
         mask[cy, cx] = True
         
         labeled_array, num_features = label(mask)
         territory_label = labeled_array[cy, cx]
 
         if territory_label == 0:
-        # no connected region at beaver's location
+            # No connected region at beaver's location
             if self.pos is not None:
                 self.territory = set()
-            #print(f"Beaver {getattr(self, 'unique_id', id(self))} could not form territory at {self.pos}.")
                 return
 
         visited = set()
@@ -284,10 +265,11 @@ class Beaver(Agent):
                 continue
             visited.add((y, x))
         
-            if labeled_array[y, x] == territory_label and hsm[y, x] in [2, 3, 4]:# only add if not unsuitable or water
+            # Only add if not unsuitable or water
+            if (labeled_array[y, x] == territory_label and hsm[y, x] in [2, 3, 4]):
                 patch.append((x, y))
-            
-                for dy, dx in [(-1,0), (1,0), (0,-1), (0,1)]: #rooks move
+        
+                for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                     ny, nx = y + dy, x + dx
                     if (0 <= ny < labeled_array.shape[0] and
                         0 <= nx < labeled_array.shape[1] and
@@ -297,36 +279,34 @@ class Beaver(Agent):
                         frontier.append((cell_score(ny, nx), ny, nx))
 
         self.territory = set(patch)
-        self.territory_abandonment_timer = int(np.random.exponential(48)) # most territories last 4 years some much longer
-        #print(f"Beaver {getattr(self, 'unique_id', id(self))} formed contiguous territory at {self.pos} with {len(self.territory)} cells.")
+        # Most territories last 4 years, some much longer
+        self.territory_abandonment_timer = int(np.random.exponential(48))
 
-        # assign the same territory to partner
+        # Assign the same territory to partner
         if self.partner and self.partner.partner == self:
             self.partner.territory = self.territory
             self.partner.territory_abandonment_timer = self.territory_abandonment_timer
 
-        # assign the same territory to all offspring
+        # Assign the same territory to all offspring
         for agent in self.model.grid.get_cell_list_contents([self.pos]):
             if isinstance(agent, (Kit, Juvenile)) and not getattr(agent, "remove", False):
                 agent.territory = self.territory
                 agent.territory_abandonment_timer = self.territory_abandonment_timer
 
     def abandon_territory(self):
-
+        # Mark all dams in territory as abandoned
         for dam in self.model.type[Dam]:
             if dam.pos in self.territory and not dam.abandoned:
                 dam.abandoned = True
-                dam.decay_timer = int(np.random.normal(24, 6))  # ~2 years, kernel spread
+                dam.decay_timer = int(np.random.normal(24, 6))  # ~2 years
                 dam.repairable = True
-                #print(f"Dam at {dam.pos} abandoned. Time to decay is {dam.decay_timer}")
 
-        #print(f"Beaver {getattr(self, 'unique_id', id(self))} abandoned territory at {self.pos} ")
         self.territory = set()
         self.territory_abandonment_timer = None
         
 
   
-        # move partner and kits with agent
+        # Move partner and kits with agent
         if self.partner:
             self.partner.territory = set()
             self.partner.territory_abandonment_timer = None
@@ -343,23 +323,19 @@ class Beaver(Agent):
                     self.model.grid.move_agent(agent, self.pos)
                 else:
                     self.model.grid.place_agent(agent, self.pos)
-                    
-
-
 
     def reproduce(self):
+        # Create 1-4 kits if conditions are met
         if self.partner is not None and self.pos is not None:
-            for _ in range(self.random.randint(1, 4)): # random number of kits between 1-4
+            for _ in range(self.random.randint(1, 4)):
                 kit = Kit(self.model, sex=self.random.choice(['M', 'F']))
-                kit.territory = self.territory  # inherit parent's territory
+                kit.territory = self.territory  # Inherit parent's territory
                 kit.territory_abandonment_timer = self.territory_abandonment_timer
                 self.model.grid.place_agent(kit, self.pos)
                 self.model.type[Beaver].append(kit)
-                #print(f"Kit created at {self.pos} by parent {getattr(self, 'unique_id', id(self))}"){self.pos} by parent {getattr(self, 'unique_id', id(self))}")
-
 
     def age_up(self):
-        # kit -> juvenile at age 2 (24 steps), juvenile -> adult at age 3 (36 steps)
+        # Kit -> juvenile at age 2 (24 steps), juvenile -> adult at age 3 (36 steps)
         if isinstance(self, Kit) and self.age >= 24: 
             return Juvenile(self.model, sex=self.sex, age=self.age)
         elif isinstance(self, Juvenile) and self.age >= 36:
@@ -367,88 +343,79 @@ class Beaver(Agent):
         else:
             return self
 
-
-    
     def build_dam(self):
-        if not self.territory: #if not in territory
-            #print("No territory, skipping dam build.")
+        # Build dams on territory waterways
+        if not self.territory:
             return
 
+        # Only one beaver per territory should build dams
         if self.territory:
             for agent in self.model.type[Beaver]:
-                if(agent is not self
-                   and agent.territory == self.territory
-                   and agent.unique_id<self.unique_id):
+                if (agent is not self
+                    and agent.territory == self.territory
+                    and agent.unique_id < self.unique_id):
                     return
 
         transform = self.model.dem_transform
         inv_transform = ~transform
         real_coords = [rasterio.transform.xy(transform, y, x, offset='center') for (x, y) in self.territory]
-        territory_shape = MultiPoint(real_coords).convex_hull #get territory shape
-        #print(f"Territory bounds: {territory_shape.bounds}")
+        territory_shape = MultiPoint(real_coords).convex_hull
 
+        # Find waterways intersecting territory with suitable gradient
         water_in_territory = self.model.waterways[
-            (self.model.waterways.intersects(territory_shape)) & #find all waterways intersecting territory
-            (self.model.waterways["gradient"] <= 4)] #grad >4
-        #print(f"Waterways intersecting territory: {len(water_in_territory)}")
+            (self.model.waterways.intersects(territory_shape)) & 
+            (self.model.waterways["gradient"] <= 4)]
         
         if water_in_territory.empty:
-            #print("No waterways intersecting territory.")
             return
+        
         dam_attempts = 0
         for idx, segment in water_in_territory.iterrows(): 
             if dam_attempts >= 5:
-                #print("Max dam attempts reached for this step.")
                 break
             gradient = segment["gradient"]
-            #print(f"Checking segment {idx} with gradient {gradient}")
             if gradient == 'NULL' or (isinstance(gradient, float) and np.isnan(gradient)):
                 gradient = 0
 
-            channel = segment.geometry #all points along the channel
-            num_points = int(channel.length //5) #every 5m can build
-            for fraction in np.linspace(0,1, num_points):
+            channel = segment.geometry  # All points along the channel
+            num_points = int(channel.length // 5)  # Every 5m can build
+            for fraction in np.linspace(0, 1, num_points):
                 if dam_attempts >= 5:
                     break
                 point = channel.interpolate(fraction * channel.length)
                 col, row = inv_transform * (point.x, point.y)
-                x,y = int(round(col)), int(round(row))
-                if (x,y) not in self.territory:
+                x, y = int(round(col)), int(round(row))
+                if (x, y) not in self.territory:
                     continue
 
-                existing_dams = self.model.grid.get_cell_list_contents([(x,y)])
+                existing_dams = self.model.grid.get_cell_list_contents([(x, y)])
                 if any(isinstance(a, Dam) for a in existing_dams):
-                    #print(f"Dam already exists at {(x, y)}, skipping.")
                     continue
             
-                temp_dam = Dam(self.model, (x, y), depth = None)
+                temp_dam = Dam(self.model, (x, y), depth=None)
                 flood_layer = temp_dam.flood_fill()
                 if temp_dam.flood_land():
-                    if temp_dam.pos != (x,y):
+                    if temp_dam.pos != (x, y):
                         self.model.grid.place_agent(temp_dam, (x, y))
                     self.model.type[Dam].append(temp_dam)
                     self.dam = temp_dam
-                    #print(f"Beaver {getattr(self, 'unique_id', id(self))} built dam at {(x, y)}")
                     flooded_indices = np.argwhere(temp_dam.flooded_area == 1)
                     for r, c in flooded_indices:
-                        if 0 <= r < self.model.hsm.shape[0] and 0 <= c < self.model.hsm.shape[1]:
+                        if (0 <= r < self.model.hsm.shape[0] and 0 <= c < self.model.hsm.shape[1]):
                             self.model.hsm[r, c] = 6 
                     return
                 else:
-                    #print ("Dam not built: too much water man!")
-                    dam_attempts +=1
-    
-
+                    dam_attempts += 1
 
 class Kit(Beaver):
-    # kits move with group, can't pair or reproduce, age up
+    # Kits move with group, can't pair or reproduce, age up at 24 months
+    
     def __init__(self, model, sex=None, age=0):
         super().__init__(model, sex=sex, age=age)
 
     def step(self):
-        
+        # Background mortality
         if np.random.rand() < 0.002:
-            #print(f"Kit {getattr(self, 'unique_id', id(self))} died due to background mortality.")
             self.remove = True
             return
 
@@ -457,12 +424,15 @@ class Kit(Beaver):
             self.remove = True
             return
 
-        adults_in_cell = [a for a in self.model.grid.get_cell_list_contents([self.pos]) if isinstance(a, Adult) and not getattr(a, "remove", False)]
+        # Kits die if no adults in cell
+        adults_in_cell = [a for a in self.model.grid.get_cell_list_contents([self.pos]) 
+                         if isinstance(a, Adult) and not getattr(a, "remove", False)]
         if not adults_in_cell:
             self.remove = True
             return
 
-        new_self = self.age_up() # age up if applicable
+        # Age up if applicable
+        new_self = self.age_up()
         if new_self is not self:
             self.remove = True
             self.model.grid.place_agent(new_self, self.pos)
@@ -470,9 +440,9 @@ class Kit(Beaver):
             return
 
 
-
 class Juvenile(Beaver):
-    # juveniles disperse away from group, pair and reproduce, !build dams!, age up
+    # Juveniles can stay in natal colony for longer then disperse, pair and reproduce, age up at 36 months
+    
     def __init__(self, model, sex=None, age=0):
         super().__init__(model, sex=sex, age=age)
         self.helper_timer = int(np.clip(np.random.exponential(6), 0, 24))
@@ -481,50 +451,45 @@ class Juvenile(Beaver):
         super().step()
         if self.remove:
             return
-        if self.helper_timer >0:
+        
+        # Stay as helper for a period
+        if self.helper_timer > 0:
             self.helper_timer -= 1
             return
 
-        new_self = self.age_up() # age up if applicable
+        # Age up if applicable
+        new_self = self.age_up()
         if new_self is not self:
             self.remove = True
             self.model.grid.place_agent(new_self, self.pos)
             self.model.type[Beaver].append(new_self)
-            # return new_self.step() - no need to call step again, mutating the agent list by iterating
             return
-        
-        
-
 
 
 class Adult(Beaver):
-    # adults have full range of beaver behaviour (pairing, moving, reproducing, !building dams!, they dont age up-they die)
+    # Adults have full beaver behaviour - pairing, movement, reproduction, dam building
+    
     def __init__(self, model, sex=None, age=0):
         super().__init__(model, sex=sex, age=age)
     
     def step(self):
-        super().step()  # call base beaver logic (pairing, movement)
+        super().step()  # Call base beaver logic
         if self.remove:
             return
         
-        
-
-        
-
 class Dam(Agent):
+    # Dam agent that creates flooding and can be abandoned or decay
+    
     def __init__(self, model, pos, depth):
         super().__init__(model)
-
         self.pos = pos
         self.dam_remove = False
         self.abandoned = False
-        self.decay_timer =None
+        self.decay_timer = None
         self.repairable = False
 
-        #print(f"Dam created at {self.pos}, abandoned={self.abandoned}, decay_timer={self.decay_timer}")
-
         if depth is None:
-            mu, sigma = 1.6, 0.44 #hartman 2006
+            mu, sigma = 1.6, 0.44  # Flooding depth
             lower, upper = 0.55, 2.0
             while True:
                 d = np.random.normal(mu, sigma)
@@ -536,11 +501,12 @@ class Dam(Agent):
         self.flooded_area = None
 
     def flood_fill(self):
+        # Calculate flood extent using DEM and dam depth
         if self.pos is None:
             return None
         x0, y0 = self.pos
         dem = self.model.dem
-        flood_layer = zeros(dem.shape, dtype = int)
+        flood_layer = zeros(dem.shape, dtype=int)
         r0, c0 = y0, x0
         assessed = set()
         to_assess = set()
@@ -552,13 +518,17 @@ class Dam(Agent):
             assessed.add((r, c))
             if dem[r, c] <= flood_extent:
                 flood_layer[r, c] = 1
-                for r_adj, c_adj in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]:                        neighbour = (r + r_adj, c + c_adj)
-                if 0 <= neighbour[0] < dem.shape[0] and 0 <= neighbour[1] < dem.shape[1] and neighbour not in assessed:
-                    to_assess.add(neighbour)
+                for r_adj, c_adj in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]:                        
+                    neighbour = (r + r_adj, c + c_adj)
+                    if (0 <= neighbour[0] < dem.shape[0] and 
+                        0 <= neighbour[1] < dem.shape[1] and 
+                        neighbour not in assessed):
+                        to_assess.add(neighbour)
         self.flooded_area = flood_layer
         return flood_layer
 
     def flood_land(self):
+        # Check if flooding affects non-water habitat
         if self.flooded_area is None:
             return False
         hsm = self.model.hsm
@@ -570,14 +540,12 @@ class Dam(Agent):
         return False
     
     def step(self):
-
-        
+        # Handle dam decay when abandoned
         if self.abandoned:
-            #print(f"Dam at {self.pos} is abandoned with decay_timer={self.decay_timer}")
             if self.decay_timer is not None:
                 self.decay_timer -= 1
                 if self.decay_timer <= 0:
-                    #print(f"Dam at {self.pos} decayed and removed.")
+                
                     flooded_indices = np.argwhere(self.flooded_area == 1)
                     for r, c in flooded_indices:
                         if 0 <= r < self.model.hsm.shape[0] and 0 <= c < self.model.hsm.shape[1]:

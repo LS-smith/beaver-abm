@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+
+# Output files
+*.csv
+*.png
+*.log
+
+# Data input files (too large for repository)
+data/*.tif
+data/*.shp
+data/*.dbf
+data/*.shx
+data/*.prj
+data/*.cpg
+data/*.aux.xml
+data/*.zip
+
+# System files
+.DS_Store
+
+# Virtual environment
+venv/
+.env

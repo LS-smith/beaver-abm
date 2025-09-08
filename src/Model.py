@@ -1,54 +1,48 @@
+
+import numpy as np
+import geopandas as gdp
 from mesa import Model
 from mesa.datacollection import DataCollector
-from mesa.space import MultiGrid
 from mesa.experimental.devs import ABMSimulator
-import numpy as np
+from mesa.space import MultiGrid
 from rasterio import open as rio_open
-import geopandas as gdp
 
-from Agent import Beaver, Kit, Juvenile, Adult, Dam # if this is seperate files
+from Agent import Beaver, Kit, Juvenile, Adult, Dam
+
 
 class Flood_Model(Model):
-    def __init__(self, dem, dem_transform, initial_beavers=50, seed=None, simulator=None): # initialise
+    #ABM model for beaver population and dam building simulation
+    
+    def __init__(self, dem, dem_transform, initial_beavers=50, seed=None, simulator=None):
         super().__init__(seed=seed)
 
-        #print("Reading HSM...")
+        # Load habitat suitability model
         with rio_open('./data/hsm_5m.tif') as hsm:
             self.hsm = hsm.read(1)
-        #print("HSM loaded bruh")
 
-        #print("Reading dtw...")
+        # Load distance to water layer
         with rio_open('./data/distance_to_water_5m.tif') as dtw:
             self.distance_to_water = dtw.read(1)
-        #print("dtw also done...")
 
-        #print("Reading waterways...")
-        self.waterways = gdp.read_file('./data/Water_network.shp') 
-        #print("waterways not the issue...")
+        # Load waterway network
+        self.waterways = gdp.read_file('./data/Water_network.shp')
 
         self.dem = dem
         self.dem_transform = dem_transform
-        
         self.height, self.width = self.dem.shape
 
-        # properly initialise the grid
-        #print("initialsing grid...")
+        # Initialise the spatial grid
         self.grid = MultiGrid(self.width, self.height, torus=True)
-        #print("done")
-        # initialise type as a set NOT list
+        
+        # Initialise agent type collections
         self.type = {Beaver: [], Dam: []}
 
-        #print("building valid area.")
-        #ys, xs = np.nonzero(self.dem != 0)
-        # valid_area =np.column_stack((xs, ys))  
-        #print("DONE .")
-
-        # create initial beavers and add them to the grid
-        #print("creating agents...")
+        # Create initial beaver pairs
         num_pairs = initial_beavers // 2
 
-        #find all suitable cells near water
-        suitable_cells = np.argwhere((self.hsm >= 2) & (self.hsm <= 4) & (self.distance_to_water < 50)  )
+        # Find suitable cells near water for initial placement
+        suitable_cells = np.argwhere(
+            (self.hsm >= 2) & (self.hsm <= 4) & (self.distance_to_water < 50))
 
         used_indices = set()
         pairs_placed = 0
@@ -58,42 +52,43 @@ class Flood_Model(Model):
             if idx1 in used_indices:
                 continue
             y1, x1 = suitable_cells[idx1]
-            # find an adjacent suitable cell not already used
-            neighbors = set(
+            
+            # Find an adjacent suitable cell not already used
+            neighbours = set(
                 (y1 + dy, x1 + dx)
                 for dy in [-1, 0, 1]
                 for dx in [-1, 0, 1]
                 if not (dy == 0 and dx == 0)
             )
-            neighbor_indices = [
+            neighbour_indices = [
                 i for i, (y, x) in enumerate(suitable_cells)
-                if (y, x) in neighbors and i not in used_indices
+                if (y, x) in neighbours and i not in used_indices
             ]
-            if neighbor_indices:
-                idx2 = self.random.choice(neighbor_indices)
+            
+            if neighbour_indices:
+                idx2 = self.random.choice(neighbour_indices)
                 y2, x2 = suitable_cells[idx2]
+                
+                # Create mated pair
                 male = Adult(self, sex="M")
                 female = Adult(self, sex="F")
                 male.partner = female
                 female.partner = male
                 female.breeding_month = self.random.choice([4, 5, 6])
                 female.kits_this_year = False
+                
+                # Place agents on grid
                 self.grid.place_agent(male, (x1, y1))
                 self.grid.place_agent(female, (x2, y2))
                 self.type[Beaver].append(male)
                 self.type[Beaver].append(female)
+                
                 used_indices.update([idx1, idx2])
                 pairs_placed += 1
             else:
                 used_indices.add(idx1)
 
-        #print("agents created.")
-
-        #print("after model creation:")
-        #print("beavers in model.type[Beaver]:", len(self.type[Beaver]))
-        #print("total number of agents in the grid:", sum(len(cell_contents) for cell_contents, pos in self.grid.coord_iter()))
-
-
+        # Initialise data collection
         self.datacollector = DataCollector({
             "beaver_num": lambda m: len(m.type[Beaver]),
 
@@ -124,7 +119,7 @@ class Flood_Model(Model):
 
             "territory_size_km2": lambda m: [len(t) * ((5*5)/1e6) for t in set(tuple(b.territory) for b in m.type[Beaver] if b.territory)],
 
-            #territory location as centroid
+            #Territory location as centroid
             "territory_location": lambda m: [(sum(xs)/len(t), sum(ys)/len(t)) if len(t) > 0 else (None, None) for t in set(tuple(b.territory) for b in m.type[Beaver] if b.territory) for xs, ys in [zip(*t)] if len(t) > 0],
 
             "territory_cells_location": lambda m: [list (t) for t in set(tuple(b.territory) for b in m.type[Beaver] if b.territory) ],
@@ -141,29 +136,30 @@ class Flood_Model(Model):
 
         self.datacollector.collect(self)
 
+        # Set up simulator
         if simulator is not None:
             self.simulator = simulator
-            self.simulator.setup(self)   
+            self.simulator.setup(self)
         self.running = True
-
         self.month = 1
 
-    
-
     def step(self):
-
+        # Advance month counter
         self.month += 1
         if self.month > 12:
             self.month = 1
 
-        # update the agents
+        # Update all beaver agents
         for agent in list(self.type[Beaver]):
             agent.step()
 
+        # Update all dam agents
         for dam in list(self.type[Dam]):
             dam.step()
 
-        beavers_to_remove = [agent for agent in self.type[Beaver] if getattr(agent, "remove", False)]
+        # Remove agents marked for removal
+        beavers_to_remove = [agent for agent in self.type[Beaver] 
+                           if getattr(agent, "remove", False)]
         for agent in beavers_to_remove:
             if agent.pos is not None:
                 try:
@@ -172,8 +168,7 @@ class Flood_Model(Model):
                     pass   
             self.type[Beaver].remove(agent)
 
-        #print(f"Step {self.month}: Number of dams before removal: {len(self.type[Dam])}")
-
+        # Remove dams marked for removal
         dams_to_remove = [dam for dam in self.type[Dam] if dam.dam_remove]
         for dam in dams_to_remove:
             if dam.pos is not None:
@@ -182,7 +177,6 @@ class Flood_Model(Model):
                 except ValueError:
                     pass
             self.type[Dam].remove(dam)
-            #print(f"Step {self.month}: Number of dams after removal: {len(self.type[Dam])}")
         
-        
-        self.datacollector.collect(self) # collect data on each step
+        # Collect data for this step
+        self.datacollector.collect(self)

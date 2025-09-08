@@ -1,11 +1,20 @@
-#data handling e.g. numpy, pandas
+# Core computing
+numpy
+scipy
 
+# Data handling
+pandas
 
-#abm
-mesa [rec]
+# Agent-based modelling
+mesa
+
+# Geospatial data processing
 rasterio
-scikit-image #for downsampling of dem
 geopandas
+shapely
 
+# Image processing
+scikit-image
 
-#visualisation
+# Visualisation (optional - currently commented out in App.py)
+matplotlib
