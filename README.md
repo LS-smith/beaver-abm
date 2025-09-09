@@ -90,7 +90,7 @@ source beaver-env/bin/activate  # On Windows: beaver-env\Scripts\activate
 
 3. Install dependencies:
 ```bash
-pip install -r data/requirements.txt
+pip install -r requirements.txt
 ```
 
 ### Required Python Packages
@@ -200,19 +200,20 @@ The model collects data on:
 ```
 beaver-abm/
 ├── README.md
+├── requirements.txt         # Python package requirements
 ├── data/
-│   ├── requirements.txt
-│   ├── DTM.tif              # Digital Elevation Model
-│   ├── hsm_5m.tif           # Habitat Suitability Model
-│   ├── distance_to_water_5m.tif
-│   ├── Water_network.shp    # Stream network
-│   └── landcover.tif        # Land cover data
+│   # Data files (user-provided):
+│   # ├── DTM.tif            # Digital Elevation Model
+│   # ├── hsm_5m.tif         # Habitat Suitability Model  
+│   # ├── distance_to_water_5m.tif # Distance to water data
+│   # ├── Water_network.shp  # Stream network
+│   # └── landcover.tif      # Land cover data
 ├── src/
 │   ├── Agent.py             # Beaver and Dam agent classes
 │   ├── Model.py             # Main simulation model
-│   ├── App.py               # Application runner and visualization
-│   ├── distance_to_water.py # Spatial analysis utilities
-│   └── preprocess_hsm.py    # Data preprocessing scripts
+│   ├── App.py               # Application runner
+│   ├── distance_to_water.py # Distance to water preprocessing
+│   └── preprocess_hsm.py    # HSM preprocessing 
 └── out/                     # Output directory for results
 ```
 
